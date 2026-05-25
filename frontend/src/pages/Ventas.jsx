@@ -31,11 +31,22 @@ export default function Ventas() {
   const [searchCedula, setSearchCedula] = useState('')
   const [clientResults, setClientResults] = useState([])
   const [selectedClient, setSelectedClient] = useState(null)
+  
   const [availablePigs, setAvailablePigs] = useState([])
   const [pigSearch, setPigSearch] = useState('')
-  const [selectedPigs, setSelectedPigs] = useState({}) // { id_cerdo: price }
+  
+  // Available pigs interaction
+  const [checkedPigs, setCheckedPigs] = useState({})
+  const [pendingPrices, setPendingPrices] = useState({})
+  
+  // Cart
+  const [cart, setCart] = useState([])
+  const [editingCartId, setEditingCartId] = useState(null)
+  const [editingCartPrice, setEditingCartPrice] = useState('')
+
   const [newSaleError, setNewSaleError] = useState('')
   const [successInvoice, setSuccessInvoice] = useState(null)
+  const [confirmCloseModal, setConfirmCloseModal] = useState(false)
 
   const reload = () => {
     getVentas().then((r) => setVentas(Array.isArray(r.data) ? r.data : [])).catch(() => {})
@@ -74,23 +85,46 @@ export default function Ventas() {
     setSelectedClient(null)
   }
 
-  const togglePigSelection = (id_cerdo) => {
-    setSelectedPigs(prev => {
-      const copy = { ...prev }
-      if (copy[id_cerdo] !== undefined) {
-        delete copy[id_cerdo]
-      } else {
-        copy[id_cerdo] = 0 // Default price 0
-      }
-      return copy
-    })
+  // Pigs Interaction
+  const toggleCheck = (id_cerdo) => {
+    setCheckedPigs(prev => ({
+      ...prev,
+      [id_cerdo]: !prev[id_cerdo]
+    }))
   }
 
-  const handlePriceChange = (id_cerdo, value) => {
-    setSelectedPigs(prev => ({
-      ...prev,
-      [id_cerdo]: parseFloat(value) || 0
-    }))
+  const addToCart = (pig, priceStr) => {
+    const price = parseFloat(priceStr)
+    if (isNaN(price) || price <= 0) return
+
+    setCart(prev => [...prev, {
+      id_cerdo: pig.id_cerdo,
+      raza: pig.raza,
+      peso: pig.ultimo_peso_kg,
+      precio: price
+    }])
+
+    // Reset interactions for this row
+    setCheckedPigs(prev => ({...prev, [pig.id_cerdo]: false}))
+    setPendingPrices(prev => ({...prev, [pig.id_cerdo]: ''}))
+  }
+
+  const removeFromCart = (id_cerdo) => {
+    setCart(prev => prev.filter(c => c.id_cerdo !== id_cerdo))
+  }
+
+  const startEditPrice = (cartItem) => {
+    setEditingCartId(cartItem.id_cerdo)
+    setEditingCartPrice(cartItem.precio.toString())
+  }
+
+  const saveEditPrice = (id_cerdo) => {
+    const newPrice = parseFloat(editingCartPrice)
+    if (!isNaN(newPrice) && newPrice > 0) {
+      setCart(prev => prev.map(c => c.id_cerdo === id_cerdo ? { ...c, precio: newPrice } : c))
+    }
+    setEditingCartId(null)
+    setEditingCartPrice('')
   }
 
   const filteredPigs = availablePigs.filter(p => 
@@ -98,8 +132,17 @@ export default function Ventas() {
     (p.raza && p.raza.toLowerCase().includes(pigSearch.toLowerCase()))
   )
 
-  const selectedPigsList = Object.keys(selectedPigs).map(id => parseInt(id))
-  const isSaleValid = selectedClient && selectedPigsList.length > 0 && selectedPigsList.every(id => selectedPigs[id] > 0)
+  const cartTotal = cart.reduce((acc, c) => acc + c.precio, 0)
+
+  let validationMsg = "";
+  if (!selectedClient) {
+    validationMsg = "Selecciona un cliente para continuar.";
+  } else if (cart.length === 0) {
+    validationMsg = "Agrega al menos un cerdo al carrito.";
+  } else if (cart.some(c => c.precio <= 0)) {
+    validationMsg = "Todos los precios deben ser mayores a 0.";
+  }
+  const isSaleValid = !validationMsg;
 
   const handleRegisterSale = async () => {
     setNewSaleError('')
@@ -107,16 +150,14 @@ export default function Ventas() {
 
     const payload = {
       id_cliente: selectedClient.id_cliente,
-      // id_empleado is handled by backend from JWT
-      ids_cerdos: selectedPigsList,
-      precios: selectedPigsList.map(id => selectedPigs[id])
+      // id_empleado is securely handled by backend from JWT (req.user.id)
+      ids_cerdos: cart.map(c => c.id_cerdo),
+      precios: cart.map(c => c.precio)
     }
 
     try {
       const res = await registrarVenta(payload)
-      setIsNewSaleOpen(false)
-      setSelectedClient(null)
-      setSelectedPigs({})
+      forceCloseNewSale()
       setSuccessInvoice(res.data.id_factura)
       reload()
     } catch (err) {
@@ -124,14 +165,24 @@ export default function Ventas() {
     }
   }
 
-  const closeNewSale = () => {
-    setIsNewSaleOpen(false)
-    setSelectedClient(null)
-    setSelectedPigs({})
-    setSearchCedula('')
-    setNewSaleError('')
+  const requestCloseNewSale = () => {
+    if (cart.length > 0) {
+      setConfirmCloseModal(true)
+    } else {
+      forceCloseNewSale()
+    }
   }
 
+  const forceCloseNewSale = () => {
+    setIsNewSaleOpen(false)
+    setSelectedClient(null)
+    setCart([])
+    setCheckedPigs({})
+    setPendingPrices({})
+    setSearchCedula('')
+    setNewSaleError('')
+    setConfirmCloseModal(false)
+  }
 
   // --- Existing Handlers ---
 
@@ -196,9 +247,6 @@ export default function Ventas() {
   const primerDetalle = detalleInfo.length > 0 ? detalleInfo[0] : null;
   const totalFactura = detalleInfo.reduce((acc, d) => acc + Number(d.precio_venta_cop), 0);
 
-  // Totals for New Sale
-  const currentTotal = selectedPigsList.reduce((acc, id) => acc + (selectedPigs[id] || 0), 0)
-
   return (
     <div>
       <style>{`
@@ -223,7 +271,7 @@ export default function Ventas() {
             
             <div style={{ padding: '1.25rem 2rem', background: '#fff', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2 style={{ margin: 0, color: '#111827' }}>Registrar Nueva Venta</h2>
-              <button onClick={closeNewSale} style={{ background: 'transparent', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#9ca3af' }}>&times;</button>
+              <button onClick={requestCloseNewSale} style={{ background: 'transparent', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#9ca3af' }}>&times;</button>
             </div>
 
             <div style={{ padding: '2rem', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -231,7 +279,7 @@ export default function Ventas() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
                 {/* SECCION 1 - CLIENTE */}
                 <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                  <h3 style={{ margin: '0 0 1rem 0', color: '#374151' }}>1. Cliente</h3>
+                  <h3 style={{ margin: '0 0 1rem 0', color: '#374151' }}>1. Búsqueda de Cliente</h3>
                   
                   {!selectedClient ? (
                     <div style={{ position: 'relative' }}>
@@ -245,7 +293,7 @@ export default function Ventas() {
                         style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #d1d5db' }}
                       />
                       {clientResults.length > 0 && (
-                        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #d1d5db', borderRadius: '4px', marginTop: '4px', zIndex: 10, maxHeight: '200px', overflowY: 'auto' }}>
+                        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #d1d5db', borderRadius: '4px', marginTop: '4px', zIndex: 10, maxHeight: '200px', overflowY: 'auto', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
                           {clientResults.map(c => (
                             <div 
                               key={c.id_cliente} 
@@ -264,6 +312,7 @@ export default function Ventas() {
                       <button 
                         onClick={handleClearClient}
                         style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: '4px', width: '24px', height: '24px', cursor: 'pointer' }}
+                        title="Limpiar cliente"
                       >
                         &times;
                       </button>
@@ -280,15 +329,15 @@ export default function Ventas() {
                   <h3 style={{ margin: '0 0 1rem 0', color: '#374151' }}>2. Empleado Vendedor</h3>
                   <div style={{ background: '#f3f4f6', border: '1px dashed #d1d5db', borderRadius: '6px', padding: '1rem' }}>
                     <div style={{ fontWeight: 600, color: '#111827' }}>{user?.nombre}</div>
-                    <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.25rem' }}>Autenticado automáticamente</div>
+                    <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.25rem' }}>Autenticado automáticamente (ID oculto)</div>
                   </div>
                 </div>
               </div>
 
-              {/* SECCION 3 - CERDOS */}
+              {/* SECCION 3 - CERDOS DISPONIBLES */}
               <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <h3 style={{ margin: 0, color: '#374151' }}>3. Seleccionar Cerdos ({selectedPigsList.length} seleccionados)</h3>
+                  <h3 style={{ margin: 0, color: '#374151' }}>3. Cerdos Disponibles</h3>
                   <input 
                     type="text" 
                     placeholder="Filtrar por ID o Raza..." 
@@ -302,26 +351,30 @@ export default function Ventas() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead style={{ position: 'sticky', top: 0, background: '#f9fafb', zIndex: 1 }}>
                       <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                        <th style={{ padding: '0.75rem' }}></th>
+                        <th style={{ padding: '0.75rem' }}>Sel.</th>
                         <th style={{ padding: '0.75rem' }}>ID</th>
                         <th style={{ padding: '0.75rem' }}>Sexo</th>
                         <th style={{ padding: '0.75rem' }}>Raza</th>
                         <th style={{ padding: '0.75rem' }}>Edad</th>
                         <th style={{ padding: '0.75rem' }}>Último peso</th>
-                        <th style={{ padding: '0.75rem', width: '150px' }}>Precio Venta (COP)</th>
+                        <th style={{ padding: '0.75rem', width: '220px' }}>Precio Venta (COP)</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredPigs.map(p => {
-                        const isSelected = selectedPigs[p.id_cerdo] !== undefined;
+                        const inCart = cart.some(c => c.id_cerdo === p.id_cerdo);
+                        const isChecked = !!checkedPigs[p.id_cerdo];
+                        const pendingPrice = pendingPrices[p.id_cerdo] || '';
+                        
                         return (
-                          <tr key={p.id_cerdo} style={{ borderBottom: '1px solid #f3f4f6', background: isSelected ? '#eff6ff' : 'transparent' }}>
+                          <tr key={p.id_cerdo} style={{ borderBottom: '1px solid #f3f4f6', background: inCart ? '#f9fafb' : (isChecked ? '#eff6ff' : 'transparent'), opacity: inCart ? 0.6 : 1 }}>
                             <td style={{ padding: '0.75rem' }}>
                               <input 
                                 type="checkbox" 
-                                checked={isSelected} 
-                                onChange={() => togglePigSelection(p.id_cerdo)} 
-                                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                checked={inCart || isChecked}
+                                disabled={inCart}
+                                onChange={() => toggleCheck(p.id_cerdo)} 
+                                style={{ width: '18px', height: '18px', cursor: inCart ? 'not-allowed' : 'pointer' }}
                               />
                             </td>
                             <td style={{ padding: '0.75rem', fontWeight: 600 }}>#{p.id_cerdo}</td>
@@ -330,14 +383,28 @@ export default function Ventas() {
                             <td style={{ padding: '0.75rem' }}>{p.edad_dias ?? '—'} días</td>
                             <td style={{ padding: '0.75rem' }}>{p.ultimo_peso_kg ?? '—'} kg</td>
                             <td style={{ padding: '0.75rem' }}>
-                              {isSelected && (
-                                <input 
-                                  type="number" 
-                                  value={selectedPigs[p.id_cerdo] === 0 ? '' : selectedPigs[p.id_cerdo]}
-                                  onChange={(e) => handlePriceChange(p.id_cerdo, e.target.value)}
-                                  placeholder="Ej: 850000"
-                                  style={{ width: '100%', padding: '0.4rem', border: '1px solid #93c5fd', borderRadius: '4px' }}
-                                />
+                              {inCart ? (
+                                <button disabled style={{ padding: '0.35rem 0.75rem', background: '#e5e7eb', color: '#6b7280', border: 'none', borderRadius: '4px', fontWeight: 600, cursor: 'not-allowed' }}>
+                                  En carrito
+                                </button>
+                              ) : (
+                                isChecked && (
+                                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                    <input 
+                                      type="number" 
+                                      value={pendingPrice}
+                                      onChange={(e) => setPendingPrices(prev => ({...prev, [p.id_cerdo]: e.target.value}))}
+                                      placeholder="Ej: 850000"
+                                      min="1"
+                                      style={{ width: '100px', padding: '0.35rem', border: '1px solid #93c5fd', borderRadius: '4px' }}
+                                    />
+                                    {parseFloat(pendingPrice) > 0 && (
+                                      <button onClick={() => addToCart(p, pendingPrice)} style={{ padding: '0.35rem 0.75rem', background: '#10b981', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: 600, cursor: 'pointer' }}>
+                                        Agregar
+                                      </button>
+                                    )}
+                                  </div>
+                                )
                               )}
                             </td>
                           </tr>
@@ -353,18 +420,67 @@ export default function Ventas() {
                 </div>
               </div>
 
-              {/* SECCION 4 - RESUMEN */}
-              <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <h3 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Resumen de Venta</h3>
-                  <div style={{ color: '#6b7280' }}>{selectedPigsList.length} animales seleccionados</div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '0.875rem', color: '#4b5563', marginBottom: '0.25rem' }}>Total General</div>
-                  <div style={{ fontSize: '2rem', fontWeight: 800, color: '#111827' }}>
-                    {formatMoneda(currentTotal)}
+              {/* SECCION 4 - CARRITO DE VENTA */}
+              <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                <h3 style={{ margin: '0 0 1rem 0', color: '#374151' }}>4. Carrito de Venta</h3>
+                
+                {cart.length === 0 ? (
+                  <div style={{ padding: '2rem', textAlign: 'center', color: '#9ca3af', border: '1px dashed #d1d5db', borderRadius: '6px' }}>
+                    El carrito está vacío. Selecciona cerdos en la tabla superior, asigna un precio y haz clic en "Agregar".
                   </div>
-                </div>
+                ) : (
+                  <div style={{ border: '1px solid #e5e7eb', borderRadius: '6px', overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                      <thead style={{ background: '#f9fafb' }}>
+                        <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                          <th style={{ padding: '0.75rem' }}>#</th>
+                          <th style={{ padding: '0.75rem' }}>ID Cerdo</th>
+                          <th style={{ padding: '0.75rem' }}>Raza</th>
+                          <th style={{ padding: '0.75rem' }}>Peso (kg)</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'right' }}>Precio COP</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center' }}>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cart.map((c, idx) => (
+                          <tr key={c.id_cerdo} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                            <td style={{ padding: '0.75rem', color: '#6b7280' }}>{idx + 1}</td>
+                            <td style={{ padding: '0.75rem', fontWeight: 600 }}>#{c.id_cerdo}</td>
+                            <td style={{ padding: '0.75rem' }}>{c.raza ?? '—'}</td>
+                            <td style={{ padding: '0.75rem' }}>{c.peso ?? '—'}</td>
+                            <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600, color: '#111827' }}>
+                              {editingCartId === c.id_cerdo ? (
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                                  <input 
+                                    type="number" 
+                                    value={editingCartPrice}
+                                    onChange={(e) => setEditingCartPrice(e.target.value)}
+                                    style={{ width: '100px', padding: '0.25rem', border: '1px solid #3b82f6', borderRadius: '4px' }}
+                                  />
+                                  <button onClick={() => saveEditPrice(c.id_cerdo)} style={{ background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', padding: '0.25rem 0.5rem' }}>✓</button>
+                                </div>
+                              ) : (
+                                formatMoneda(c.precio)
+                              )}
+                            </td>
+                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                              {editingCartId !== c.id_cerdo && (
+                                <>
+                                  <button onClick={() => startEditPrice(c)} style={{ background: 'transparent', border: 'none', color: '#3b82f6', cursor: 'pointer', marginRight: '0.75rem', fontSize: '1.1rem' }} title="Editar precio">✏️</button>
+                                  <button onClick={() => removeFromCart(c.id_cerdo)} style={{ background: 'transparent', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '1.1rem' }} title="Eliminar del carrito">❌</button>
+                                </>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <div style={{ padding: '1rem', background: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e5e7eb' }}>
+                      <div style={{ color: '#4b5563', fontWeight: 600 }}>Cerdos seleccionados: {cart.length}</div>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827' }}>Total: {formatMoneda(cartTotal)}</div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {newSaleError && (
@@ -374,17 +490,24 @@ export default function Ventas() {
               )}
             </div>
 
-            <div style={{ padding: '1.5rem 2rem', background: '#fff', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-              <button onClick={closeNewSale} style={{ padding: '0.75rem 1.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, color: '#374151' }}>
-                Cancelar
-              </button>
-              <button 
-                onClick={handleRegisterSale} 
-                disabled={!isSaleValid}
-                style={{ padding: '0.75rem 2rem', background: isSaleValid ? '#2563eb' : '#9ca3af', border: 'none', borderRadius: '4px', cursor: isSaleValid ? 'pointer' : 'not-allowed', fontWeight: 600, color: '#fff', transition: 'background 0.2s' }}
-              >
-                Registrar Venta
-              </button>
+            <div style={{ padding: '1.5rem 2rem', background: '#fff', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                {!isSaleValid && (
+                  <span style={{ color: '#dc2626', fontWeight: 600, fontSize: '0.9rem' }}>⚠️ {validationMsg}</span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button onClick={requestCloseNewSale} style={{ padding: '0.75rem 1.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, color: '#374151' }}>
+                  Cancelar
+                </button>
+                <button 
+                  onClick={handleRegisterSale} 
+                  disabled={!isSaleValid}
+                  style={{ padding: '0.75rem 2rem', background: isSaleValid ? '#2563eb' : '#9ca3af', border: 'none', borderRadius: '4px', cursor: isSaleValid ? 'pointer' : 'not-allowed', fontWeight: 600, color: '#fff', transition: 'background 0.2s' }}
+                >
+                  Registrar Venta
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -395,12 +518,23 @@ export default function Ventas() {
         <Modal title="¡Venta Exitosa!" onClose={() => setSuccessInvoice(null)}>
           <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
             <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>✅</div>
-            <h3 style={{ margin: '0 0 1rem 0', color: '#111827', fontSize: '1.25rem' }}>Se ha registrado la venta correctamente.</h3>
-            <p style={{ color: '#4b5563', marginBottom: '2rem' }}>El identificador de la nueva factura es:</p>
-            <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#2563eb', marginBottom: '2rem', padding: '1rem', background: '#eff6ff', borderRadius: '8px' }}>
-              #{successInvoice}
+            <h3 style={{ margin: '0 0 1rem 0', color: '#111827', fontSize: '1.25rem' }}>Venta registrada — Factura #{successInvoice}</h3>
+            <p style={{ color: '#4b5563', marginBottom: '2rem' }}>La transacción se ha almacenado correctamente.</p>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button onClick={() => setSuccessInvoice(null)} style={{ padding: '0.75rem 1.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, color: '#374151' }}>
+                Cerrar
+              </button>
+              <button 
+                onClick={() => {
+                  const id = successInvoice;
+                  setSuccessInvoice(null);
+                  handleVerDetalle(id);
+                }} 
+                style={{ ...btnPrimary, padding: '0.75rem 1.5rem' }}
+              >
+                Ver factura
+              </button>
             </div>
-            <button onClick={() => setSuccessInvoice(null)} style={{ ...btnPrimary, width: '100%' }}>Continuar</button>
           </div>
         </Modal>
       )}
@@ -498,6 +632,15 @@ export default function Ventas() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={confirmCloseModal}
+        title="Cancelar venta"
+        message="Tienes cerdos en el carrito. ¿Seguro que deseas cerrar sin guardar? Se perderá todo el progreso."
+        confirmColor="red"
+        onConfirm={forceCloseNewSale}
+        onCancel={() => setConfirmCloseModal(false)}
+      />
 
       <ConfirmModal
         isOpen={!!confirmAnularId}
