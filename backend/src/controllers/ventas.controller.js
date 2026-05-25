@@ -52,3 +52,20 @@ export async function getDashboardVentas(req, res, next) {
     next(err)
   }
 }
+
+export async function getDetalleVenta(req, res, next) {
+  try {
+    const { id } = req.params
+    const result = await pool.query(`
+      SELECT df.id_cerdo, df.precio_venta_cop,
+             c.sexo_cerdo, r.descripcion AS raza
+      FROM comercial.detalle_factura df
+      JOIN infraestructura.cerdo c ON c.id_cerdo = df.id_cerdo
+      JOIN infraestructura.raza_ref r ON r.id_raza = c.id_raza
+      WHERE df.id_factura = $1
+    `, [id])
+    res.json(result.rows)
+  } catch (err) {
+    next(err)
+  }
+}

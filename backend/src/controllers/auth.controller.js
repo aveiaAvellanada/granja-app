@@ -10,22 +10,34 @@ export async function login(req, res, next) {
     }
 
     // personal.administrador: login por correo_admin, contraseña en contrasena_admin
-    const result = await pool.query(
+    const resultAdmin = await pool.query(
       `SELECT id_admin AS id,
               (p_nombre || ' ' || p_apellido) AS nombre,
-              contrasena_admin AS contrasena,
               'administrador' AS rol
-       FROM personal.administrador WHERE correo_admin = $1`,
-      [usuario]
+       FROM personal.administrador 
+       WHERE correo_admin = $1 AND contrasena_admin = crypt($2, contrasena_admin)`,
+      [usuario, contrasena]
     )
 
-    if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'Credenciales inválidas' })
+    let user = null;
+
+    if (resultAdmin.rows.length > 0) {
+      user = resultAdmin.rows[0];
+    } else {
+      const resultEmpleado = await pool.query(
+        `SELECT id_empleado AS id,
+                (p_nombre || ' ' || p_apellido) AS nombre,
+                'empleado' AS rol
+         FROM personal.empleado 
+         WHERE correo_empleado = $1 AND contrasena_empleado = crypt($2, contrasena_empleado)`,
+        [usuario, contrasena]
+      )
+      if (resultEmpleado.rows.length > 0) {
+        user = resultEmpleado.rows[0];
+      }
     }
 
-    const user = result.rows[0]
-    const valid = await bcrypt.compare(contrasena, user.contrasena)
-    if (!valid) {
+    if (!user) {
       return res.status(401).json({ error: 'Credenciales inválidas' })
     }
 

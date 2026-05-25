@@ -4,7 +4,7 @@ export async function getEmpleados(req, res, next) {
   try {
     const result = await pool.query(
       `SELECT id_empleado, p_nombre, s_nombre, p_apellido, s_apellido,
-              cedula_empleado, estado_empleado
+              cedula_empleado, estado_empleado, correo_empleado
        FROM personal.empleado ORDER BY p_apellido`
     )
     res.json(result.rows)
@@ -15,15 +15,15 @@ export async function getEmpleados(req, res, next) {
 
 export async function createEmpleado(req, res, next) {
   try {
-    const { p_nombre, s_nombre, p_apellido, s_apellido, cedula_empleado, estado_empleado } = req.body
+    const { p_nombre, s_nombre, p_apellido, s_apellido, cedula_empleado, estado_empleado, correo_empleado, contrasena } = req.body
     const id_admin = req.user.id
     const result = await pool.query(
       `INSERT INTO personal.empleado
-         (p_nombre, s_nombre, p_apellido, s_apellido, cedula_empleado, estado_empleado, id_admin)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
-       RETURNING id_empleado, p_nombre, p_apellido, cedula_empleado, estado_empleado`,
+         (p_nombre, s_nombre, p_apellido, s_apellido, cedula_empleado, estado_empleado, id_admin, correo_empleado, contrasena_empleado)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,crypt($9, gen_salt('bf', 12)))
+       RETURNING id_empleado, p_nombre, p_apellido, cedula_empleado, estado_empleado, correo_empleado`,
       [p_nombre, s_nombre ?? null, p_apellido, s_apellido ?? null,
-       cedula_empleado, estado_empleado ?? 'Activo', id_admin]
+       cedula_empleado, estado_empleado ?? 'Activo', id_admin, correo_empleado, contrasena]
     )
     res.status(201).json(result.rows[0])
   } catch (err) {

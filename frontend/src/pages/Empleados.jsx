@@ -33,6 +33,7 @@ export default function Empleados() {
     { header: 'Nombre', accessorKey: 'p_nombre', cell: info => `${info.getValue()} ${info.row.original.s_nombre ?? ''}`.trim() },
     { header: 'Apellido', accessorKey: 'p_apellido', cell: info => `${info.getValue()} ${info.row.original.s_apellido ?? ''}`.trim() },
     { header: 'Cédula', accessorKey: 'cedula_empleado' },
+    { header: 'Correo', accessorKey: 'correo_empleado' },
     { 
       header: 'Estado', 
       accessorKey: 'estado_empleado',
@@ -77,6 +78,8 @@ export default function Empleados() {
             <FormField label="Primer Apellido" error={errors.p_apellido?.message}><input style={inputStyle} {...register('p_apellido', { required: true })} /></FormField>
             <FormField label="Segundo Apellido (Opcional)"><input style={inputStyle} {...register('s_apellido')} /></FormField>
             <FormField label="Cédula" error={errors.cedula_empleado?.message}><input style={inputStyle} {...register('cedula_empleado', { required: true })} /></FormField>
+            <FormField label="Correo electrónico" error={errors.correo_empleado?.message}><input style={inputStyle} type="email" {...register('correo_empleado', { required: true })} /></FormField>
+            <FormField label="Contraseña" error={errors.contrasena?.message}><input style={inputStyle} type="password" {...register('contrasena', { required: true })} /></FormField>
             <FormField label="Estado" error={errors.estado_empleado?.message}>
               <select style={inputStyle} {...register('estado_empleado', { required: true })}>
                 <option value="Activo">Activo</option>

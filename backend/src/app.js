@@ -12,6 +12,8 @@ import pesajesRoutes from './routes/pesajes.routes.js'
 import veterinarioRoutes from './routes/veterinario.routes.js'
 import ventasRoutes from './routes/ventas.routes.js'
 import dashboardRoutes from './routes/dashboard.routes.js'
+import clientesRoutes from './routes/clientes.routes.js'
+import { authMiddleware } from './middleware/auth.middleware.js'
 import { startSyncWorker } from './workers/sync.worker.js'
 
 const app = express()
@@ -36,6 +38,7 @@ app.use('/api/pesajes', pesajesRoutes)
 app.use('/api/veterinario', veterinarioRoutes)
 app.use('/api/ventas', ventasRoutes)
 app.use('/api/dashboard', dashboardRoutes)
+app.use('/api/clientes', clientesRoutes)
 
 app.use(errorMiddleware)
 

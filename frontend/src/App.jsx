@@ -11,11 +11,19 @@ import Inventario from './pages/Inventario.jsx'
 import Pesajes from './pages/Pesajes.jsx'
 import Ventas from './pages/Ventas.jsx'
 import Veterinario from './pages/Veterinario.jsx'
+import Clientes from './pages/Clientes.jsx'
 
-function PrivateRoute({ children }) {
+function PrivateRoute({ children, requiredRole }) {
   const { user, loading } = useAuth()
   if (loading) return <div style={{ padding: '2rem' }}>Cargando...</div>
-  return user ? children : <Navigate to="/login" replace />
+  
+  if (!user) return <Navigate to="/login" replace />
+
+  if (requiredRole && user.rol !== requiredRole) {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  return children
 }
 
 export default function App() {
@@ -36,12 +44,14 @@ export default function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="cerdos" element={<Cerdos />} />
             <Route path="cerdos/:id" element={<CerdoDetalle />} />
-            <Route path="cochineras" element={<Cochineras />} />
-            <Route path="empleados" element={<Empleados />} />
             <Route path="inventario" element={<Inventario />} />
             <Route path="pesajes" element={<Pesajes />} />
             <Route path="ventas" element={<Ventas />} />
             <Route path="veterinario" element={<Veterinario />} />
+
+            <Route path="cochineras" element={<PrivateRoute requiredRole="administrador"><Cochineras /></PrivateRoute>} />
+            <Route path="empleados" element={<PrivateRoute requiredRole="administrador"><Empleados /></PrivateRoute>} />
+            <Route path="clientes" element={<PrivateRoute requiredRole="administrador"><Clientes /></PrivateRoute>} />
           </Route>
         </Routes>
       </BrowserRouter>

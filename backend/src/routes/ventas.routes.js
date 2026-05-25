@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { getVentas, registrarVenta, anularFactura, getDashboardVentas } from '../controllers/ventas.controller.js'
+import { getVentas, registrarVenta, anularFactura, getDashboardVentas, getDetalleVenta } from '../controllers/ventas.controller.js'
 import { authMiddleware } from '../middleware/auth.middleware.js'
 
 const router = Router()
@@ -10,5 +10,6 @@ router.get('/', getVentas)
 router.post('/', registrarVenta)
 router.put('/:id/anular', anularFactura)
 router.get('/dashboard/:anio', getDashboardVentas)
+router.get('/:id/detalle', getDetalleVenta)
 
 export default router

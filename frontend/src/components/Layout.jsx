@@ -1,11 +1,12 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 
-const nav = [
+const allNav = [
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/cerdos', label: 'Cerdos' },
-  { to: '/cochineras', label: 'Cochineras' },
-  { to: '/empleados', label: 'Empleados' },
+  { to: '/cochineras', label: 'Cochineras', adminOnly: true },
+  { to: '/clientes', label: 'Clientes', adminOnly: true },
+  { to: '/empleados', label: 'Empleados', adminOnly: true },
   { to: '/inventario', label: 'Inventario' },
   { to: '/pesajes', label: 'Pesajes' },
   { to: '/ventas', label: 'Ventas' },
@@ -20,6 +21,8 @@ export default function Layout() {
     logout()
     navigate('/login')
   }
+
+  const nav = allNav.filter(item => user?.rol === 'administrador' || !item.adminOnly)
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
