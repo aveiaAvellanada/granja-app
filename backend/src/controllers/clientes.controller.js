@@ -1,5 +1,21 @@
 import pool from '../config/db.postgres.js'
 
+export async function searchClientes(req, res, next) {
+  try {
+    const { cedula } = req.query;
+    if (!cedula) return res.json([]);
+    const result = await pool.query(
+      `SELECT * FROM comercial.cliente 
+       WHERE cedula_cliente ILIKE $1 AND estado_cliente = 'Activo' 
+       ORDER BY p_apellido LIMIT 10`,
+      [`%${cedula}%`]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function getClientes(req, res, next) {
   try {
     const result = await pool.query(

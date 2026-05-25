@@ -1,10 +1,11 @@
 import { useEffect, useState, useMemo } from 'react'
-import { useForm } from 'react-hook-form'
+import { useAuth } from '../context/AuthContext.jsx'
 import { getVentas, registrarVenta, anularFactura, getDetalleVenta } from '../api/ventas.api.js'
-import { getClientes } from '../api/clientes.api.js'
+import { buscarClientes } from '../api/clientes.api.js'
+import { getCerdos } from '../api/cerdos.api.js'
 import PageHeader from '../components/PageHeader.jsx'
 import Modal from '../components/Modal.jsx'
-import FormField, { inputStyle, btnPrimary, btnDanger, card } from '../components/FormField.jsx'
+import { btnPrimary, btnDanger, card } from '../components/FormField.jsx'
 import DataTable from '../components/DataTable.jsx'
 import ConfirmModal from '../components/ConfirmModal.jsx'
 
@@ -17,14 +18,24 @@ const formatearFechaLarga = (fechaStr) => {
 }
 
 export default function Ventas() {
+  const { user } = useAuth()
   const [ventas, setVentas] = useState([])
-  const [clientes, setClientes] = useState([])
-  const [showModal, setShowModal] = useState(false)
+  
+  // States for standard page modals
   const [detalleModal, setDetalleModal] = useState(null)
   const [detalleInfo, setDetalleInfo] = useState([])
   const [confirmAnularId, setConfirmAnularId] = useState(null)
-  const [error, setError] = useState('')
-  const { register, handleSubmit, reset } = useForm()
+  
+  // States for Nueva Venta
+  const [isNewSaleOpen, setIsNewSaleOpen] = useState(false)
+  const [searchCedula, setSearchCedula] = useState('')
+  const [clientResults, setClientResults] = useState([])
+  const [selectedClient, setSelectedClient] = useState(null)
+  const [availablePigs, setAvailablePigs] = useState([])
+  const [pigSearch, setPigSearch] = useState('')
+  const [selectedPigs, setSelectedPigs] = useState({}) // { id_cerdo: price }
+  const [newSaleError, setNewSaleError] = useState('')
+  const [successInvoice, setSuccessInvoice] = useState(null)
 
   const reload = () => {
     getVentas().then((r) => setVentas(Array.isArray(r.data) ? r.data : [])).catch(() => {})
@@ -32,21 +43,97 @@ export default function Ventas() {
 
   useEffect(() => {
     reload()
-    getClientes().then((r) => setClientes(r.data.filter(c => c.estado_cliente === 'Activo'))).catch(() => {})
   }, [])
 
-  async function onSubmit(data) {
+  // --- Nueva Venta Handlers ---
+  
+  useEffect(() => {
+    if (isNewSaleOpen) {
+      getCerdos().then(r => setAvailablePigs(r.data)).catch(() => {})
+    }
+  }, [isNewSaleOpen])
+
+  useEffect(() => {
+    if (searchCedula.trim().length > 0) {
+      const timer = setTimeout(() => {
+        buscarClientes(searchCedula).then(r => setClientResults(r.data)).catch(() => {})
+      }, 300)
+      return () => clearTimeout(timer)
+    } else {
+      setClientResults([])
+    }
+  }, [searchCedula])
+
+  const handleSelectClient = (c) => {
+    setSelectedClient(c)
+    setSearchCedula('')
+    setClientResults([])
+  }
+
+  const handleClearClient = () => {
+    setSelectedClient(null)
+  }
+
+  const togglePigSelection = (id_cerdo) => {
+    setSelectedPigs(prev => {
+      const copy = { ...prev }
+      if (copy[id_cerdo] !== undefined) {
+        delete copy[id_cerdo]
+      } else {
+        copy[id_cerdo] = 0 // Default price 0
+      }
+      return copy
+    })
+  }
+
+  const handlePriceChange = (id_cerdo, value) => {
+    setSelectedPigs(prev => ({
+      ...prev,
+      [id_cerdo]: parseFloat(value) || 0
+    }))
+  }
+
+  const filteredPigs = availablePigs.filter(p => 
+    p.id_cerdo.toString().includes(pigSearch) || 
+    (p.raza && p.raza.toLowerCase().includes(pigSearch.toLowerCase()))
+  )
+
+  const selectedPigsList = Object.keys(selectedPigs).map(id => parseInt(id))
+  const isSaleValid = selectedClient && selectedPigsList.length > 0 && selectedPigsList.every(id => selectedPigs[id] > 0)
+
+  const handleRegisterSale = async () => {
+    setNewSaleError('')
+    if (!isSaleValid) return
+
+    const payload = {
+      id_cliente: selectedClient.id_cliente,
+      // id_empleado is handled by backend from JWT
+      ids_cerdos: selectedPigsList,
+      precios: selectedPigsList.map(id => selectedPigs[id])
+    }
+
     try {
-      const ids = data.ids_cerdos.split(',').map((s) => parseInt(s.trim()))
-      const precios = data.precios.split(',').map((s) => parseFloat(s.trim()))
-      await registrarVenta({ ...data, ids_cerdos: ids, precios })
-      reset()
-      setShowModal(false)
+      const res = await registrarVenta(payload)
+      setIsNewSaleOpen(false)
+      setSelectedClient(null)
+      setSelectedPigs({})
+      setSuccessInvoice(res.data.id_factura)
       reload()
     } catch (err) {
-      setError(err.response?.data?.error || 'Error al registrar venta')
+      setNewSaleError(err.response?.data?.error || 'Error al registrar la venta')
     }
   }
+
+  const closeNewSale = () => {
+    setIsNewSaleOpen(false)
+    setSelectedClient(null)
+    setSelectedPigs({})
+    setSearchCedula('')
+    setNewSaleError('')
+  }
+
+
+  // --- Existing Handlers ---
 
   async function handleAnular() {
     await anularFactura(confirmAnularId)
@@ -109,6 +196,9 @@ export default function Ventas() {
   const primerDetalle = detalleInfo.length > 0 ? detalleInfo[0] : null;
   const totalFactura = detalleInfo.reduce((acc, d) => acc + Number(d.precio_venta_cop), 0);
 
+  // Totals for New Sale
+  const currentTotal = selectedPigsList.reduce((acc, id) => acc + (selectedPigs[id] || 0), 0)
+
   return (
     <div>
       <style>{`
@@ -120,37 +210,202 @@ export default function Ventas() {
         }
       `}</style>
       <PageHeader title="Ventas">
-        <button style={btnPrimary} onClick={() => setShowModal(true)}>+ Nueva venta</button>
+        <button style={btnPrimary} onClick={() => setIsNewSaleOpen(true)}>+ Nueva venta</button>
       </PageHeader>
 
       <div style={card}>
         <DataTable data={ventas} columns={columns} />
       </div>
 
-      {showModal && (
-        <Modal title="Nueva venta" onClose={() => setShowModal(false)}>
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <FormField label="Cliente">
-              <select style={inputStyle} {...register('id_cliente', { required: true })}>
-                <option value="">Seleccione cliente...</option>
-                {clientes.map(c => (
-                  <option key={c.id_cliente} value={c.id_cliente}>{c.p_nombre} {c.p_apellido}</option>
-                ))}
-              </select>
-            </FormField>
-            <FormField label="ID Empleado"><input style={inputStyle} type="number" {...register('id_empleado', { required: true })} /></FormField>
-            <FormField label="IDs de cerdos (separados por coma)">
-              <input style={inputStyle} placeholder="ej: 1,2,3" {...register('ids_cerdos', { required: true })} />
-            </FormField>
-            <FormField label="Precios (uno por cerdo, separados por coma)">
-              <input style={inputStyle} placeholder="ej: 500000,550000" {...register('precios', { required: true })} />
-            </FormField>
-            {error && <p style={{ color: '#ef4444', fontSize: '0.85rem' }}>{error}</p>}
-            <button type="submit" style={{ ...btnPrimary, width: '100%' }}>Registrar venta</button>
-          </form>
+      {isNewSaleOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: '#f9fafb', borderRadius: '8px', width: '95%', maxWidth: '1000px', height: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+            
+            <div style={{ padding: '1.25rem 2rem', background: '#fff', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0, color: '#111827' }}>Registrar Nueva Venta</h2>
+              <button onClick={closeNewSale} style={{ background: 'transparent', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#9ca3af' }}>&times;</button>
+            </div>
+
+            <div style={{ padding: '2rem', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                {/* SECCION 1 - CLIENTE */}
+                <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                  <h3 style={{ margin: '0 0 1rem 0', color: '#374151' }}>1. Cliente</h3>
+                  
+                  {!selectedClient ? (
+                    <div style={{ position: 'relative' }}>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Buscar por cédula</label>
+                      <input 
+                        type="text" 
+                        maxLength={12}
+                        value={searchCedula}
+                        onChange={(e) => setSearchCedula(e.target.value.replace(/\D/g, ''))}
+                        placeholder="Ej: 1020..."
+                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #d1d5db' }}
+                      />
+                      {clientResults.length > 0 && (
+                        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #d1d5db', borderRadius: '4px', marginTop: '4px', zIndex: 10, maxHeight: '200px', overflowY: 'auto' }}>
+                          {clientResults.map(c => (
+                            <div 
+                              key={c.id_cliente} 
+                              onClick={() => handleSelectClient(c)}
+                              style={{ padding: '0.75rem', borderBottom: '1px solid #f3f4f6', cursor: 'pointer' }}
+                            >
+                              <div style={{ fontWeight: 600 }}>{c.p_nombre} {c.p_apellido}</div>
+                              <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>C.C. {c.cedula_cliente}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '1rem', position: 'relative' }}>
+                      <button 
+                        onClick={handleClearClient}
+                        style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: '4px', width: '24px', height: '24px', cursor: 'pointer' }}
+                      >
+                        &times;
+                      </button>
+                      <div style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '0.25rem' }}>{selectedClient.p_nombre} {selectedClient.s_nombre ?? ''} {selectedClient.p_apellido} {selectedClient.s_apellido ?? ''}</div>
+                      <div style={{ color: '#4b5563', fontSize: '0.9rem' }}>C.C. {selectedClient.cedula_cliente}</div>
+                      <div style={{ color: '#4b5563', fontSize: '0.9rem' }}>Tel: {selectedClient.telefono ?? '—'}</div>
+                      <div style={{ color: '#4b5563', fontSize: '0.9rem' }}>Correo: {selectedClient.correo_cliente ?? '—'}</div>
+                    </div>
+                  )}
+                </div>
+
+                {/* SECCION 2 - EMPLEADO */}
+                <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                  <h3 style={{ margin: '0 0 1rem 0', color: '#374151' }}>2. Empleado Vendedor</h3>
+                  <div style={{ background: '#f3f4f6', border: '1px dashed #d1d5db', borderRadius: '6px', padding: '1rem' }}>
+                    <div style={{ fontWeight: 600, color: '#111827' }}>{user?.nombre}</div>
+                    <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.25rem' }}>Autenticado automáticamente</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECCION 3 - CERDOS */}
+              <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3 style={{ margin: 0, color: '#374151' }}>3. Seleccionar Cerdos ({selectedPigsList.length} seleccionados)</h3>
+                  <input 
+                    type="text" 
+                    placeholder="Filtrar por ID o Raza..." 
+                    value={pigSearch}
+                    onChange={(e) => setPigSearch(e.target.value)}
+                    style={{ padding: '0.4rem 0.75rem', borderRadius: '4px', border: '1px solid #d1d5db', width: '250px' }}
+                  />
+                </div>
+                
+                <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '6px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead style={{ position: 'sticky', top: 0, background: '#f9fafb', zIndex: 1 }}>
+                      <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                        <th style={{ padding: '0.75rem' }}></th>
+                        <th style={{ padding: '0.75rem' }}>ID</th>
+                        <th style={{ padding: '0.75rem' }}>Sexo</th>
+                        <th style={{ padding: '0.75rem' }}>Raza</th>
+                        <th style={{ padding: '0.75rem' }}>Edad</th>
+                        <th style={{ padding: '0.75rem' }}>Último peso</th>
+                        <th style={{ padding: '0.75rem', width: '150px' }}>Precio Venta (COP)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredPigs.map(p => {
+                        const isSelected = selectedPigs[p.id_cerdo] !== undefined;
+                        return (
+                          <tr key={p.id_cerdo} style={{ borderBottom: '1px solid #f3f4f6', background: isSelected ? '#eff6ff' : 'transparent' }}>
+                            <td style={{ padding: '0.75rem' }}>
+                              <input 
+                                type="checkbox" 
+                                checked={isSelected} 
+                                onChange={() => togglePigSelection(p.id_cerdo)} 
+                                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                              />
+                            </td>
+                            <td style={{ padding: '0.75rem', fontWeight: 600 }}>#{p.id_cerdo}</td>
+                            <td style={{ padding: '0.75rem' }}>{p.sexo_cerdo}</td>
+                            <td style={{ padding: '0.75rem' }}>{p.raza ?? '—'}</td>
+                            <td style={{ padding: '0.75rem' }}>{p.edad_dias ?? '—'} días</td>
+                            <td style={{ padding: '0.75rem' }}>{p.ultimo_peso_kg ?? '—'} kg</td>
+                            <td style={{ padding: '0.75rem' }}>
+                              {isSelected && (
+                                <input 
+                                  type="number" 
+                                  value={selectedPigs[p.id_cerdo] === 0 ? '' : selectedPigs[p.id_cerdo]}
+                                  onChange={(e) => handlePriceChange(p.id_cerdo, e.target.value)}
+                                  placeholder="Ej: 850000"
+                                  style={{ width: '100%', padding: '0.4rem', border: '1px solid #93c5fd', borderRadius: '4px' }}
+                                />
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                      {filteredPigs.length === 0 && (
+                        <tr>
+                          <td colSpan={7} style={{ padding: '1rem', textAlign: 'center', color: '#6b7280' }}>No se encontraron cerdos activos.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* SECCION 4 - RESUMEN */}
+              <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h3 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Resumen de Venta</h3>
+                  <div style={{ color: '#6b7280' }}>{selectedPigsList.length} animales seleccionados</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '0.875rem', color: '#4b5563', marginBottom: '0.25rem' }}>Total General</div>
+                  <div style={{ fontSize: '2rem', fontWeight: 800, color: '#111827' }}>
+                    {formatMoneda(currentTotal)}
+                  </div>
+                </div>
+              </div>
+
+              {newSaleError && (
+                <div style={{ background: '#fee2e2', color: '#991b1b', padding: '1rem', borderRadius: '6px', fontWeight: 600 }}>
+                  Error: {newSaleError}
+                </div>
+              )}
+            </div>
+
+            <div style={{ padding: '1.5rem 2rem', background: '#fff', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+              <button onClick={closeNewSale} style={{ padding: '0.75rem 1.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, color: '#374151' }}>
+                Cancelar
+              </button>
+              <button 
+                onClick={handleRegisterSale} 
+                disabled={!isSaleValid}
+                style={{ padding: '0.75rem 2rem', background: isSaleValid ? '#2563eb' : '#9ca3af', border: 'none', borderRadius: '4px', cursor: isSaleValid ? 'pointer' : 'not-allowed', fontWeight: 600, color: '#fff', transition: 'background 0.2s' }}
+              >
+                Registrar Venta
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {successInvoice && (
+        <Modal title="¡Venta Exitosa!" onClose={() => setSuccessInvoice(null)}>
+          <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
+            <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>✅</div>
+            <h3 style={{ margin: '0 0 1rem 0', color: '#111827', fontSize: '1.25rem' }}>Se ha registrado la venta correctamente.</h3>
+            <p style={{ color: '#4b5563', marginBottom: '2rem' }}>El identificador de la nueva factura es:</p>
+            <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#2563eb', marginBottom: '2rem', padding: '1rem', background: '#eff6ff', borderRadius: '8px' }}>
+              #{successInvoice}
+            </div>
+            <button onClick={() => setSuccessInvoice(null)} style={{ ...btnPrimary, width: '100%' }}>Continuar</button>
+          </div>
         </Modal>
       )}
 
+      {/* Detalle Factura Modal */}
       {detalleModal && primerDetalle && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ background: '#fff', borderRadius: '8px', width: '95%', maxWidth: '800px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>

@@ -28,12 +28,22 @@ export async function getVentas(req, res, next) {
 
 export async function registrarVenta(req, res, next) {
   try {
-    const { id_cliente, id_empleado, ids_cerdos, precios } = req.body
-    await pool.query(
-      'SELECT comercial.sp_registrar_venta($1,$2,$3,$4)',
+    const { id_cliente, ids_cerdos, precios } = req.body
+    const id_empleado = req.user.id
+
+    if (!ids_cerdos || !precios || ids_cerdos.length === 0 || ids_cerdos.length !== precios.length) {
+      return res.status(400).json({ error: 'La cantidad de cerdos y precios no coincide o está vacía' })
+    }
+
+    if (precios.some(p => p <= 0)) {
+      return res.status(400).json({ error: 'Todos los precios deben ser mayores a 0' })
+    }
+
+    const result = await pool.query(
+      'SELECT comercial.sp_registrar_venta($1,$2,$3,$4) AS id_factura',
       [id_cliente, id_empleado, ids_cerdos, precios]
     )
-    res.status(201).json({ message: 'Venta registrada' })
+    res.status(201).json({ message: 'Venta registrada', id_factura: result.rows[0].id_factura })
   } catch (err) {
     next(err)
   }
