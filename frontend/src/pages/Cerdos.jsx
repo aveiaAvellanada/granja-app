@@ -44,11 +44,11 @@ export default function Cerdos() {
             {cerdos.map((c) => (
               <tr key={c.id_cerdo}>
                 <td>{c.id_cerdo}</td>
-                <td>{c.sexo}</td>
-                <td>{c.raza ?? c.nombre_raza ?? '—'}</td>
+                <td>{c.sexo_cerdo}</td>
+                <td>{c.raza ?? '—'}</td>
                 <td>{c.edad_dias ?? '—'} días</td>
-                <td>{c.ultimo_peso ?? '—'}</td>
-                <td>{c.cochinera ?? c.nombre_cochinera ?? '—'}</td>
+                <td>{c.ultimo_peso_kg ?? '—'}</td>
+                <td>{c.id_cochinera_actual ?? '—'}</td>
                 <td><Link to={`/cerdos/${c.id_cerdo}`} style={{ color: '#2563eb', fontWeight: 600 }}>Ver</Link></td>
               </tr>
             ))}

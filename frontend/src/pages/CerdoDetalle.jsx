@@ -47,11 +47,11 @@ export default function CerdoDetalle() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
         <div style={card}>
           <h3 style={{ marginTop: 0 }}>Datos</h3>
-          <Detail label="Sexo" value={cerdo.sexo} />
-          <Detail label="Raza" value={cerdo.raza ?? cerdo.nombre_raza} />
-          <Detail label="Cochinera" value={cerdo.cochinera ?? cerdo.nombre_cochinera} />
+          <Detail label="Sexo" value={cerdo.sexo_cerdo} />
+          <Detail label="Raza" value={cerdo.raza} />
+          <Detail label="Cochinera" value={cerdo.id_cochinera_actual} />
           <Detail label="Edad" value={`${cerdo.edad_dias ?? '—'} días`} />
-          <Detail label="Último peso" value={`${cerdo.ultimo_peso ?? '—'} kg`} />
+          <Detail label="Último peso" value={`${cerdo.ultimo_peso_kg ?? '—'} kg`} />
         </div>
         {genealogia?.length > 0 && (
           <div style={card}>
