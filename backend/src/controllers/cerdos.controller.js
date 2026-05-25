@@ -70,7 +70,7 @@ export async function getHistorialPeso(req, res, next) {
   try {
     const { id } = req.params
     const result = await pool.query(
-      'SELECT * FROM gestion.vw_historial_peso_cerdo WHERE id_cerdo = $1 ORDER BY fecha',
+      'SELECT * FROM gestion.vw_historial_peso_cerdo WHERE id_cerdo = $1 ORDER BY fecha_pesaje',
       [id]
     )
     res.json(result.rows)

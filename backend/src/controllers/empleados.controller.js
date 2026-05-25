@@ -1,10 +1,11 @@
 import pool from '../config/db.postgres.js'
-import bcrypt from 'bcrypt'
 
 export async function getEmpleados(req, res, next) {
   try {
     const result = await pool.query(
-      'SELECT id_empleado, nombre, cargo, usuario, telefono, estado FROM personal.empleado ORDER BY nombre'
+      `SELECT id_empleado, p_nombre, s_nombre, p_apellido, s_apellido,
+              cedula_empleado, estado_empleado
+       FROM personal.empleado ORDER BY p_apellido`
     )
     res.json(result.rows)
   } catch (err) {
@@ -14,13 +15,15 @@ export async function getEmpleados(req, res, next) {
 
 export async function createEmpleado(req, res, next) {
   try {
-    const { nombre, cargo, usuario, contrasena, telefono } = req.body
-    const hash = await bcrypt.hash(contrasena, 10)
+    const { p_nombre, s_nombre, p_apellido, s_apellido, cedula_empleado, estado_empleado } = req.body
+    const id_admin = req.user.id
     const result = await pool.query(
-      `INSERT INTO personal.empleado (nombre, cargo, usuario, contrasena, telefono)
-       VALUES ($1,$2,$3,$4,$5)
-       RETURNING id_empleado, nombre, cargo, usuario, telefono`,
-      [nombre, cargo, usuario, hash, telefono ?? null]
+      `INSERT INTO personal.empleado
+         (p_nombre, s_nombre, p_apellido, s_apellido, cedula_empleado, estado_empleado, id_admin)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
+       RETURNING id_empleado, p_nombre, p_apellido, cedula_empleado, estado_empleado`,
+      [p_nombre, s_nombre ?? null, p_apellido, s_apellido ?? null,
+       cedula_empleado, estado_empleado ?? 'Activo', id_admin]
     )
     res.status(201).json(result.rows[0])
   } catch (err) {
@@ -31,10 +34,12 @@ export async function createEmpleado(req, res, next) {
 export async function updateEmpleado(req, res, next) {
   try {
     const { id } = req.params
-    const { estado } = req.body
+    const { estado_empleado } = req.body
     const result = await pool.query(
-      'UPDATE personal.empleado SET estado = $1 WHERE id_empleado = $2 RETURNING id_empleado, nombre, estado',
-      [estado, id]
+      `UPDATE personal.empleado SET estado_empleado = $1
+       WHERE id_empleado = $2
+       RETURNING id_empleado, p_nombre, p_apellido, estado_empleado`,
+      [estado_empleado, id]
     )
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Empleado no encontrado' })

@@ -25,9 +25,13 @@ export async function registrarRevision(req, res, next) {
 export async function getHistorialCerdo(req, res, next) {
   try {
     const { id_cerdo } = req.params
+    // revision_medica no tiene id_cerdo ni fecha — se obtienen del registro padre
     const result = await pool.query(
-      `SELECT * FROM gestion.revision_medica
-       WHERE id_cerdo = $1 ORDER BY fecha DESC`,
+      `SELECT r.fecha_registro, rm.diagnostico, rm.id_medicamento_aplicado, r.observaciones
+       FROM gestion.revision_medica rm
+       JOIN gestion.registro r ON r.id_registro = rm.id_registro
+       WHERE r.id_cerdo = $1
+       ORDER BY r.fecha_registro DESC`,
       [id_cerdo]
     )
     res.json(result.rows)

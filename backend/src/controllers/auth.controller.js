@@ -9,19 +9,15 @@ export async function login(req, res, next) {
       return res.status(400).json({ error: 'Usuario y contraseña requeridos' })
     }
 
-    let result = await pool.query(
-      `SELECT id_administrador AS id, nombre, contrasena, 'administrador' AS rol
-       FROM personal.administrador WHERE usuario = $1`,
+    // personal.administrador: login por correo_admin, contraseña en contrasena_admin
+    const result = await pool.query(
+      `SELECT id_admin AS id,
+              (p_nombre || ' ' || p_apellido) AS nombre,
+              contrasena_admin AS contrasena,
+              'administrador' AS rol
+       FROM personal.administrador WHERE correo_admin = $1`,
       [usuario]
     )
-
-    if (result.rows.length === 0) {
-      result = await pool.query(
-        `SELECT id_empleado AS id, nombre, contrasena, cargo AS rol
-         FROM personal.empleado WHERE usuario = $1`,
-        [usuario]
-      )
-    }
 
     if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Credenciales inválidas' })
