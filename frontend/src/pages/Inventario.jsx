@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { getInventario, getAlertas, createItem, updateStock } from '../api/inventario.api.js'
 import PageHeader from '../components/PageHeader.jsx'
 import Modal from '../components/Modal.jsx'
 import FormField, { inputStyle, btnPrimary, card } from '../components/FormField.jsx'
+import DataTable from '../components/DataTable.jsx'
 
 export default function Inventario() {
   const [items, setItems] = useState([])
@@ -34,6 +35,42 @@ export default function Inventario() {
     reload()
   }
 
+  const columns = useMemo(() => [
+    { header: 'Nombre', accessorKey: 'nombre_item' },
+    { header: 'Tipo', accessorKey: 'tipo_item' },
+    { 
+      header: 'Stock', 
+      accessorKey: 'cantidad_stock',
+      cell: info => <span style={{ fontWeight: 700, color: info.getValue() < 10 ? '#dc2626' : '#16a34a' }}>{info.getValue()}</span>
+    },
+    { header: 'Unidad', accessorFn: row => row.unidad ?? row.abreviatura ?? '—' },
+    { 
+      header: 'Estado', 
+      accessorKey: 'estado_item',
+      cell: info => {
+        const estado = info.getValue()
+        return (
+          <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: '0.8rem', background: estado === 'Disponible' ? '#dcfce7' : (estado === 'Agotado' ? '#fee2e2' : '#f3f4f6'), color: estado === 'Disponible' ? '#166534' : (estado === 'Agotado' ? '#991b1b' : '#6b7280') }}>
+            {estado}
+          </span>
+        )
+      }
+    },
+    {
+      header: 'Acción',
+      id: 'accion',
+      cell: info => {
+        const item = info.row.original;
+        return (
+          <button onClick={() => { setEditItem(item); stockForm.setValue('cantidad_stock', item.cantidad_stock); setModal('stock') }}
+            style={{ fontSize: '0.8rem', padding: '3px 10px', borderRadius: 4, border: '1px solid #d1d5db', background: '#fff' }}>
+            Actualizar stock
+          </button>
+        )
+      }
+    }
+  ], [])
+
   return (
     <div>
       <PageHeader title="Inventario">
@@ -47,32 +84,7 @@ export default function Inventario() {
       )}
 
       <div style={card}>
-        <table>
-          <thead>
-            <tr><th>Nombre</th><th>Tipo</th><th>Stock</th><th>Unidad</th><th>Estado</th><th>Acción</th></tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <tr key={item.id_item}>
-                <td>{item.nombre_item}</td>
-                <td>{item.tipo_item}</td>
-                <td style={{ fontWeight: 700, color: item.cantidad_stock < 10 ? '#dc2626' : '#16a34a' }}>{item.cantidad_stock}</td>
-                <td>{item.unidad ?? item.abreviatura ?? '—'}</td>
-                <td>
-                  <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: '0.8rem', background: item.estado_item === 'Disponible' ? '#dcfce7' : (item.estado_item === 'Agotado' ? '#fee2e2' : '#f3f4f6'), color: item.estado_item === 'Disponible' ? '#166534' : (item.estado_item === 'Agotado' ? '#991b1b' : '#6b7280') }}>
-                    {item.estado_item}
-                  </span>
-                </td>
-                <td>
-                  <button onClick={() => { setEditItem(item); stockForm.setValue('cantidad_stock', item.cantidad_stock); setModal('stock') }}
-                    style={{ fontSize: '0.8rem', padding: '3px 10px', borderRadius: 4, border: '1px solid #d1d5db', background: '#fff' }}>
-                    Actualizar stock
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable data={items} columns={columns} />
       </div>
 
       {modal === 'nuevo' && (

@@ -1,17 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { getCochineras, createCochinera, updateCochinera } from '../api/cochineras.api.js'
 import PageHeader from '../components/PageHeader.jsx'
 import Modal from '../components/Modal.jsx'
 import FormField, { inputStyle, btnPrimary, card } from '../components/FormField.jsx'
-
-function ocupacionColor(ocupacion, capacidad) {
-  if (!capacidad) return '#e5e7eb'
-  const pct = ocupacion / capacidad
-  if (pct >= 0.9) return '#fee2e2'
-  if (pct >= 0.6) return '#fef3c7'
-  return '#dcfce7'
-}
+import DataTable from '../components/DataTable.jsx'
 
 export default function Cochineras() {
   const [cochineras, setCochineras] = useState([])
@@ -30,11 +23,33 @@ export default function Cochineras() {
   }
 
   async function toggleEstado(c) {
-    // Only toggling between Disponible and En Mantenimiento for simplicity here
     const nuevoEstado = c.estado_cochinera === 'En Mantenimiento' ? 'Disponible' : 'En Mantenimiento'
     await updateCochinera(c.id_cochinera, { estado_cochinera: nuevoEstado })
     getCochineras().then((r) => setCochineras(r.data))
   }
+
+  const columns = useMemo(() => [
+    { header: 'ID', accessorKey: 'id_cochinera' },
+    { header: 'Capacidad Máxima', accessorKey: 'capacidad_max' },
+    { header: 'Ocupación Actual', accessorKey: 'ocupacion_actual', cell: info => info.getValue() ?? 0 },
+    { header: 'Espacios Libres', accessorKey: 'espacios_libres', cell: info => info.getValue() ?? info.row.original.capacidad_max },
+    { header: 'Estado', accessorKey: 'estado_cochinera' },
+    {
+      header: 'Acción',
+      id: 'accion',
+      cell: info => {
+        const c = info.row.original;
+        return (
+          <button
+            onClick={() => toggleEstado(c)}
+            style={{ fontSize: '0.78rem', padding: '3px 10px', borderRadius: 4, border: '1px solid #d1d5db', background: '#fff' }}
+          >
+            {c.estado_cochinera === 'En Mantenimiento' ? 'Habilitar' : 'Mantenimiento'}
+          </button>
+        )
+      }
+    }
+  ], [])
 
   return (
     <div>
@@ -42,26 +57,8 @@ export default function Cochineras() {
         <button style={btnPrimary} onClick={() => setShowModal(true)}>+ Nueva cochinera</button>
       </PageHeader>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-        {cochineras.map((c) => (
-          <div
-            key={c.id_cochinera}
-            style={{ ...card, margin: 0, borderLeft: `4px solid #2563eb`, background: ocupacionColor(c.ocupacion_actual ?? 0, c.capacidad_max) }}
-          >
-            <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '0.25rem' }}>Cochinera #{c.id_cochinera}</div>
-            <div style={{ fontSize: '0.85rem', color: '#374151' }}>
-              {c.ocupacion_actual ?? 0} / {c.capacidad_max} cerdos
-            </div>
-            <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.2rem' }}>Libres: {c.espacios_libres ?? c.capacidad_max}</div>
-            <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.2rem' }}>Estado: {c.estado_cochinera}</div>
-            <button
-              onClick={() => toggleEstado(c)}
-              style={{ marginTop: '0.75rem', fontSize: '0.78rem', padding: '3px 10px', borderRadius: 4, border: '1px solid #d1d5db', background: '#fff' }}
-            >
-              {c.estado_cochinera === 'En Mantenimiento' ? 'Habilitar' : 'Mantenimiento'}
-            </button>
-          </div>
-        ))}
+      <div style={card}>
+        <DataTable data={cochineras} columns={columns} />
       </div>
 
       {showModal && (

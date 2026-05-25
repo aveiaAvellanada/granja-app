@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { getPesajes, registrarPesaje, getPendientes } from '../api/pesajes.api.js'
 import PageHeader from '../components/PageHeader.jsx'
 import Modal from '../components/Modal.jsx'
 import FormField, { inputStyle, btnPrimary, card } from '../components/FormField.jsx'
+import DataTable from '../components/DataTable.jsx'
 
 export default function Pesajes() {
   const [pesajes, setPesajes] = useState([])
@@ -25,6 +26,14 @@ export default function Pesajes() {
     reload()
   }
 
+  const columns = useMemo(() => [
+    { header: 'ID Pesaje', accessorKey: 'id_pesaje' },
+    { header: 'Cerdo', accessorKey: 'id_cerdo', cell: info => `#${info.getValue()}` },
+    { header: 'Peso (kg)', accessorKey: 'peso_kg', cell: info => <span style={{ fontWeight: 700 }}>{info.getValue()}</span> },
+    { header: 'Fecha', accessorKey: 'fecha_pesaje', cell: info => info.getValue()?.slice(0, 10) },
+    { header: 'Empleado', accessorKey: 'id_empleado' }
+  ], [])
+
   return (
     <div>
       <PageHeader title="Pesajes">
@@ -39,23 +48,7 @@ export default function Pesajes() {
       )}
 
       <div style={card}>
-        <table>
-          <thead>
-            <tr><th>ID Pesaje</th><th>Cerdo</th><th>Peso (kg)</th><th>Fecha</th><th>Empleado</th></tr>
-          </thead>
-          <tbody>
-            {pesajes.map((p) => (
-              <tr key={p.id_pesaje}>
-                <td>{p.id_pesaje}</td>
-                <td>#{p.id_cerdo}</td>
-                <td style={{ fontWeight: 700 }}>{p.peso_kg}</td>
-                <td>{p.fecha_pesaje?.slice(0, 10)}</td>
-                <td>{p.id_empleado}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {pesajes.length === 0 && <p style={{ textAlign: 'center', color: '#9ca3af' }}>Sin pesajes.</p>}
+        <DataTable data={pesajes} columns={columns} />
       </div>
 
       {showModal && (

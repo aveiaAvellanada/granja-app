@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { getPendientes, registrarRevision } from '../api/veterinario.api.js'
 import PageHeader from '../components/PageHeader.jsx'
 import Modal from '../components/Modal.jsx'
 import FormField, { inputStyle, btnPrimary, card } from '../components/FormField.jsx'
+import DataTable from '../components/DataTable.jsx'
 
 export default function Veterinario() {
   const [pendientes, setPendientes] = useState([])
@@ -27,6 +28,28 @@ export default function Veterinario() {
     getPendientes().then((r) => setPendientes(Array.isArray(r.data) ? r.data : []))
   }
 
+  const columns = useMemo(() => [
+    { header: 'Cerdo', accessorKey: 'id_cerdo', cell: info => `#${info.getValue()}` },
+    { header: 'Última revisión', accessorKey: 'ultima_revision', cell: info => info.getValue()?.slice(0, 10) ?? 'Nunca' },
+    { 
+      header: 'Días sin revisión', 
+      accessorKey: 'dias_sin_revision',
+      cell: info => <span style={{ color: '#dc2626', fontWeight: 700 }}>{info.getValue() ?? '—'}</span>
+    },
+    {
+      header: 'Acción',
+      id: 'accion',
+      cell: info => {
+        const p = info.row.original;
+        return (
+          <button onClick={() => abrirRevision(p)} style={{ ...btnPrimary, fontSize: '0.8rem', padding: '4px 12px' }}>
+            Registrar revisión
+          </button>
+        )
+      }
+    }
+  ], [])
+
   return (
     <div>
       <PageHeader title="Revisiones Médicas" />
@@ -35,25 +58,9 @@ export default function Veterinario() {
         <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>
           Cerdos pendientes de revisión ({pendientes.length})
         </h3>
-        <table>
-          <thead>
-            <tr><th>Cerdo</th><th>Última revisión</th><th>Días sin revisión</th><th>Acción</th></tr>
-          </thead>
-          <tbody>
-            {pendientes.map((p) => (
-              <tr key={p.id_cerdo}>
-                <td>#{p.id_cerdo}</td>
-                <td>{p.ultima_revision?.slice(0, 10) ?? 'Nunca'}</td>
-                <td style={{ color: '#dc2626', fontWeight: 700 }}>{p.dias_sin_revision ?? '—'}</td>
-                <td>
-                  <button onClick={() => abrirRevision(p)} style={{ ...btnPrimary, fontSize: '0.8rem', padding: '4px 12px' }}>
-                    Registrar revisión
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        
+        <DataTable data={pendientes} columns={columns} />
+        
         {pendientes.length === 0 && (
           <p style={{ textAlign: 'center', color: '#16a34a', padding: '1rem' }}>
             Todos los cerdos están al día con sus revisiones.

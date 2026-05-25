@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link } from 'react-router-dom'
 import { getCerdos, registrarCerdo } from '../api/cerdos.api.js'
 import PageHeader from '../components/PageHeader.jsx'
 import Modal from '../components/Modal.jsx'
 import FormField, { inputStyle, btnPrimary, card } from '../components/FormField.jsx'
+import DataTable from '../components/DataTable.jsx'
 
 export default function Cerdos() {
   const [cerdos, setCerdos] = useState([])
@@ -27,6 +28,20 @@ export default function Cerdos() {
     }
   }
 
+  const columns = useMemo(() => [
+    { header: 'ID', accessorKey: 'id_cerdo' },
+    { header: 'Sexo', accessorKey: 'sexo_cerdo' },
+    { header: 'Raza', accessorKey: 'raza', cell: info => info.getValue() ?? '—' },
+    { header: 'Edad', accessorKey: 'edad_dias', cell: info => info.getValue() != null ? `${info.getValue()} días` : '—' },
+    { header: 'Peso (kg)', accessorKey: 'ultimo_peso_kg', cell: info => info.getValue() ?? '—' },
+    { header: 'Cochinera', accessorKey: 'id_cochinera_actual', cell: info => info.getValue() ?? '—' },
+    {
+      header: 'Acciones',
+      id: 'acciones',
+      cell: info => <Link to={`/cerdos/${info.row.original.id_cerdo}`} style={{ color: '#2563eb', fontWeight: 600 }}>Ver</Link>
+    }
+  ], [])
+
   return (
     <div>
       <PageHeader title="Cerdos">
@@ -34,27 +49,7 @@ export default function Cerdos() {
       </PageHeader>
 
       <div style={card}>
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th><th>Sexo</th><th>Raza</th><th>Edad</th><th>Peso (kg)</th><th>Cochinera</th><th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {cerdos.map((c) => (
-              <tr key={c.id_cerdo}>
-                <td>{c.id_cerdo}</td>
-                <td>{c.sexo_cerdo}</td>
-                <td>{c.raza ?? '—'}</td>
-                <td>{c.edad_dias ?? '—'} días</td>
-                <td>{c.ultimo_peso_kg ?? '—'}</td>
-                <td>{c.id_cochinera_actual ?? '—'}</td>
-                <td><Link to={`/cerdos/${c.id_cerdo}`} style={{ color: '#2563eb', fontWeight: 600 }}>Ver</Link></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {cerdos.length === 0 && <p style={{ textAlign: 'center', color: '#9ca3af' }}>No hay cerdos activos.</p>}
+        <DataTable data={cerdos} columns={columns} />
       </div>
 
       {showModal && (

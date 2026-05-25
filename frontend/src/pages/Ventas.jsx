@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { getVentas, registrarVenta, anularFactura } from '../api/ventas.api.js'
 import PageHeader from '../components/PageHeader.jsx'
 import Modal from '../components/Modal.jsx'
 import FormField, { inputStyle, btnPrimary, btnDanger, card } from '../components/FormField.jsx'
+import DataTable from '../components/DataTable.jsx'
 
 export default function Ventas() {
   const [ventas, setVentas] = useState([])
@@ -36,6 +37,39 @@ export default function Ventas() {
     reload()
   }
 
+  const columns = useMemo(() => [
+    { header: 'Factura', accessorKey: 'id_factura', cell: info => `#${info.getValue()}` },
+    { header: 'Cliente', accessorFn: row => row.cliente ?? row.id_cliente },
+    { header: 'Empleado', accessorFn: row => row.empleado ?? row.id_empleado },
+    { header: 'Total', accessorFn: row => row.total ?? row.valor_total, cell: info => <span style={{ fontWeight: 700 }}>${info.getValue() ?? '—'}</span> },
+    { header: 'Fecha', accessorKey: 'fecha_venta', cell: info => info.getValue()?.slice(0, 10) },
+    { 
+      header: 'Estado', 
+      accessorKey: 'estado_factura',
+      cell: info => {
+        const estado = info.getValue() ?? 'Activa';
+        return (
+          <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: '0.8rem', background: estado === 'Anulada' ? '#fee2e2' : '#dcfce7', color: estado === 'Anulada' ? '#991b1b' : '#166534' }}>
+            {estado}
+          </span>
+        )
+      }
+    },
+    {
+      header: 'Acción',
+      id: 'accion',
+      cell: info => {
+        const v = info.row.original;
+        if (v.estado_factura === 'Anulada') return null;
+        return (
+          <button onClick={() => handleAnular(v.id_factura)} style={{ ...btnDanger, fontSize: '0.78rem', padding: '3px 8px' }}>
+            Anular
+          </button>
+        )
+      }
+    }
+  ], [])
+
   return (
     <div>
       <PageHeader title="Ventas">
@@ -43,35 +77,7 @@ export default function Ventas() {
       </PageHeader>
 
       <div style={card}>
-        <table>
-          <thead>
-            <tr><th>Factura</th><th>Cliente</th><th>Empleado</th><th>Total</th><th>Fecha</th><th>Estado</th><th>Acción</th></tr>
-          </thead>
-          <tbody>
-            {ventas.map((v, i) => (
-              <tr key={v.id_factura ?? i}>
-                <td>#{v.id_factura}</td>
-                <td>{v.cliente ?? v.id_cliente}</td>
-                <td>{v.empleado ?? v.id_empleado}</td>
-                <td style={{ fontWeight: 700 }}>${v.total ?? v.valor_total ?? '—'}</td>
-                <td>{v.fecha_venta?.slice(0, 10)}</td>
-                <td>
-                  <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: '0.8rem', background: v.estado_factura === 'Anulada' ? '#fee2e2' : '#dcfce7', color: v.estado_factura === 'Anulada' ? '#991b1b' : '#166534' }}>
-                    {v.estado_factura ?? 'Activa'}
-                  </span>
-                </td>
-                <td>
-                  {v.estado_factura !== 'Anulada' && (
-                    <button onClick={() => handleAnular(v.id_factura)} style={{ ...btnDanger, fontSize: '0.78rem', padding: '3px 8px' }}>
-                      Anular
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {ventas.length === 0 && <p style={{ textAlign: 'center', color: '#9ca3af' }}>Sin ventas registradas.</p>}
+        <DataTable data={ventas} columns={columns} />
       </div>
 
       {showModal && (

@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { getEmpleados, createEmpleado, updateEmpleado } from '../api/empleados.api.js'
 import PageHeader from '../components/PageHeader.jsx'
 import Modal from '../components/Modal.jsx'
 import FormField, { inputStyle, btnPrimary, card } from '../components/FormField.jsx'
+import DataTable from '../components/DataTable.jsx'
 
 export default function Empleados() {
   const [empleados, setEmpleados] = useState([])
@@ -27,6 +28,37 @@ export default function Empleados() {
     getEmpleados().then((r) => setEmpleados(r.data))
   }
 
+  const columns = useMemo(() => [
+    { header: 'ID', accessorKey: 'id_empleado' },
+    { header: 'Nombre', accessorKey: 'p_nombre', cell: info => `${info.getValue()} ${info.row.original.s_nombre ?? ''}`.trim() },
+    { header: 'Apellido', accessorKey: 'p_apellido', cell: info => `${info.getValue()} ${info.row.original.s_apellido ?? ''}`.trim() },
+    { header: 'Cédula', accessorKey: 'cedula_empleado' },
+    { 
+      header: 'Estado', 
+      accessorKey: 'estado_empleado',
+      cell: info => {
+        const estado = info.getValue();
+        return (
+          <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: '0.8rem', background: estado === 'Activo' ? '#dcfce7' : '#f3f4f6', color: estado === 'Activo' ? '#166534' : '#6b7280' }}>
+            {estado}
+          </span>
+        )
+      }
+    },
+    {
+      header: 'Acción',
+      id: 'accion',
+      cell: info => {
+        const e = info.row.original;
+        return (
+          <button onClick={() => toggleEstado(e)} style={{ fontSize: '0.8rem', padding: '3px 10px', borderRadius: 4, border: '1px solid #d1d5db', background: '#fff' }}>
+            {e.estado_empleado === 'Activo' ? 'Desactivar' : 'Activar'}
+          </button>
+        )
+      }
+    }
+  ], [])
+
   return (
     <div>
       <PageHeader title="Empleados">
@@ -34,31 +66,7 @@ export default function Empleados() {
       </PageHeader>
 
       <div style={card}>
-        <table>
-          <thead>
-            <tr><th>ID</th><th>Nombre</th><th>Apellido</th><th>Cédula</th><th>Estado</th><th>Acción</th></tr>
-          </thead>
-          <tbody>
-            {empleados.map((e) => (
-              <tr key={e.id_empleado}>
-                <td>{e.id_empleado}</td>
-                <td>{e.p_nombre} {e.s_nombre ?? ''}</td>
-                <td>{e.p_apellido} {e.s_apellido ?? ''}</td>
-                <td>{e.cedula_empleado}</td>
-                <td>
-                  <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: '0.8rem', background: e.estado_empleado === 'Activo' ? '#dcfce7' : '#f3f4f6', color: e.estado_empleado === 'Activo' ? '#166534' : '#6b7280' }}>
-                    {e.estado_empleado}
-                  </span>
-                </td>
-                <td>
-                  <button onClick={() => toggleEstado(e)} style={{ fontSize: '0.8rem', padding: '3px 10px', borderRadius: 4, border: '1px solid #d1d5db', background: '#fff' }}>
-                    {e.estado_empleado === 'Activo' ? 'Desactivar' : 'Activar'}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable data={empleados} columns={columns} />
       </div>
 
       {showModal && (
