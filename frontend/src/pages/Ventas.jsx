@@ -8,6 +8,14 @@ import FormField, { inputStyle, btnPrimary, btnDanger, card } from '../component
 import DataTable from '../components/DataTable.jsx'
 import ConfirmModal from '../components/ConfirmModal.jsx'
 
+const formatMoneda = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(val)
+
+const formatearFechaLarga = (fechaStr) => {
+  if (!fechaStr) return '—'
+  const opciones = { year: 'numeric', month: 'long', day: 'numeric' }
+  return new Date(fechaStr).toLocaleDateString('es-CO', opciones)
+}
+
 export default function Ventas() {
   const [ventas, setVentas] = useState([])
   const [clientes, setClientes] = useState([])
@@ -43,6 +51,7 @@ export default function Ventas() {
   async function handleAnular() {
     await anularFactura(confirmAnularId)
     setConfirmAnularId(null)
+    setDetalleModal(null)
     reload()
   }
 
@@ -60,15 +69,17 @@ export default function Ventas() {
     { header: 'Factura', accessorKey: 'id_factura', cell: info => `#${info.getValue()}` },
     { header: 'Cliente', accessorFn: row => row.cliente ?? row.id_cliente },
     { header: 'Empleado', accessorFn: row => row.empleado ?? row.id_empleado },
-    { header: 'Total', accessorFn: row => row.total ?? row.valor_total, cell: info => <span style={{ fontWeight: 700 }}>${info.getValue() ?? '—'}</span> },
+    { header: 'Total', accessorFn: row => row.total_cop, cell: info => <span style={{ fontWeight: 700 }}>{formatMoneda(info.getValue() ?? 0)}</span> },
     { header: 'Fecha', accessorKey: 'fecha_venta', cell: info => info.getValue()?.slice(0, 10) },
     { 
       header: 'Estado', 
       accessorKey: 'estado_factura',
       cell: info => {
-        const estado = info.getValue() ?? 'Activa';
+        const estado = info.getValue() ?? 'Pendiente';
+        const bg = estado === 'Completada' ? '#dcfce7' : estado === 'Anulada' ? '#fee2e2' : '#fef3c7';
+        const fg = estado === 'Completada' ? '#166534' : estado === 'Anulada' ? '#991b1b' : '#92400e';
         return (
-          <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: '0.8rem', background: estado === 'Anulada' ? '#fee2e2' : '#dcfce7', color: estado === 'Anulada' ? '#991b1b' : '#166534' }}>
+          <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: '0.8rem', background: bg, color: fg }}>
             {estado}
           </span>
         )
@@ -84,7 +95,7 @@ export default function Ventas() {
             <button onClick={() => handleVerDetalle(v.id_factura)} style={{ ...btnPrimary, fontSize: '0.78rem', padding: '3px 8px' }}>
               Ver Detalle
             </button>
-            {v.estado_factura !== 'Anulada' && (
+            {v.estado_factura === 'Completada' && (
               <button onClick={() => setConfirmAnularId(v.id_factura)} style={{ ...btnDanger, fontSize: '0.78rem', padding: '3px 8px' }}>
                 Anular
               </button>
@@ -95,8 +106,19 @@ export default function Ventas() {
     }
   ], [])
 
+  const primerDetalle = detalleInfo.length > 0 ? detalleInfo[0] : null;
+  const totalFactura = detalleInfo.reduce((acc, d) => acc + Number(d.precio_venta_cop), 0);
+
   return (
     <div>
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          #seccion-impresion, #seccion-impresion * { visibility: visible; }
+          #seccion-impresion { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; }
+          .no-print { display: none !important; }
+        }
+      `}</style>
       <PageHeader title="Ventas">
         <button style={btnPrimary} onClick={() => setShowModal(true)}>+ Nueva venta</button>
       </PageHeader>
@@ -129,30 +151,97 @@ export default function Ventas() {
         </Modal>
       )}
 
-      {detalleModal && (
-        <Modal title={`Detalle Factura #${detalleModal}`} onClose={() => setDetalleModal(null)}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', marginTop: '1rem' }}>
-            <thead>
-              <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                <th style={{ padding: '0.5rem' }}>ID Cerdo</th>
-                <th style={{ padding: '0.5rem' }}>Sexo</th>
-                <th style={{ padding: '0.5rem' }}>Raza</th>
-                <th style={{ padding: '0.5rem' }}>Precio Venta</th>
-              </tr>
-            </thead>
-            <tbody>
-              {detalleInfo.map((d, idx) => (
-                <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                  <td style={{ padding: '0.5rem' }}>#{d.id_cerdo}</td>
-                  <td style={{ padding: '0.5rem' }}>{d.sexo_cerdo}</td>
-                  <td style={{ padding: '0.5rem' }}>{d.raza}</td>
-                  <td style={{ padding: '0.5rem', fontWeight: 600 }}>${d.precio_venta_cop}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {detalleInfo.length === 0 && <p style={{ textAlign: 'center', color: '#6b7280', marginTop: '1rem' }}>No hay detalles.</p>}
-        </Modal>
+      {detalleModal && primerDetalle && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: '#fff', borderRadius: '8px', width: '95%', maxWidth: '800px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            
+            <div id="seccion-impresion" style={{ padding: '2rem', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #e5e7eb', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+                <div>
+                  <h1 style={{ margin: '0 0 0.5rem 0', fontSize: '2rem', color: '#111827' }}>Factura #{detalleModal}</h1>
+                  <div style={{ color: '#6b7280' }}>Emitida: {formatearFechaLarga(primerDetalle.fecha_venta)}</div>
+                </div>
+                <div>
+                  {(() => {
+                    const st = primerDetalle.estado_factura;
+                    const bg = st === 'Completada' ? '#dcfce7' : st === 'Anulada' ? '#fee2e2' : '#fef3c7';
+                    const fg = st === 'Completada' ? '#166534' : st === 'Anulada' ? '#991b1b' : '#92400e';
+                    return <span style={{ padding: '4px 12px', borderRadius: 999, fontSize: '0.9rem', fontWeight: 600, background: bg, color: fg }}>{st}</span>
+                  })()}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '2rem', marginBottom: '2rem' }}>
+                <div style={{ flex: 1 }}>
+                  <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', color: '#374151' }}>Datos del Cliente</h3>
+                  <div style={{ color: '#4b5563', lineHeight: '1.6' }}>
+                    <div style={{ fontWeight: 600 }}>{primerDetalle.nombre_cliente}</div>
+                    <div>Cédula: {primerDetalle.cedula_cliente}</div>
+                    <div>Tel: {primerDetalle.telefono_cliente ?? 'N/A'}</div>
+                    <div>Email: {primerDetalle.correo_cliente ?? 'N/A'}</div>
+                  </div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', color: '#374151' }}>Datos del Empleado</h3>
+                  <div style={{ color: '#4b5563', lineHeight: '1.6' }}>
+                    <div style={{ fontWeight: 600 }}>{primerDetalle.nombre_empleado}</div>
+                  </div>
+                </div>
+              </div>
+
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', marginBottom: '2rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #e5e7eb', background: '#f9fafb' }}>
+                    <th style={{ padding: '0.75rem 1rem' }}>#</th>
+                    <th style={{ padding: '0.75rem 1rem' }}>ID Cerdo</th>
+                    <th style={{ padding: '0.75rem 1rem' }}>Sexo</th>
+                    <th style={{ padding: '0.75rem 1rem' }}>Raza</th>
+                    <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Precio de Venta</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {detalleInfo.map((d, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                      <td style={{ padding: '0.75rem 1rem' }}>{idx + 1}</td>
+                      <td style={{ padding: '0.75rem 1rem' }}>#{d.id_cerdo}</td>
+                      <td style={{ padding: '0.75rem 1rem' }}>{d.sexo_cerdo}</td>
+                      <td style={{ padding: '0.75rem 1rem' }}>{d.raza}</td>
+                      <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>{formatMoneda(d.precio_venta_cop)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '1rem', borderTop: '2px solid #e5e7eb' }}>
+                <div style={{ width: '300px', fontSize: '1.1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <span style={{ color: '#4b5563' }}>Cant. Animales:</span>
+                    <span style={{ fontWeight: 600 }}>{detalleInfo.length}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.25rem', fontWeight: 700, color: '#111827' }}>
+                    <span>Total General:</span>
+                    <span>{formatMoneda(totalFactura)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="no-print" style={{ padding: '1rem 2rem', background: '#f9fafb', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+              <button onClick={() => setDetalleModal(null)} style={{ padding: '0.5rem 1.5rem', background: '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, color: '#374151' }}>
+                Cerrar
+              </button>
+              <button onClick={() => window.print()} style={{ padding: '0.5rem 1.5rem', background: '#3b82f6', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, color: '#fff' }}>
+                Imprimir
+              </button>
+              {primerDetalle.estado_factura === 'Completada' && (
+                <button onClick={() => setConfirmAnularId(detalleModal)} style={{ padding: '0.5rem 1.5rem', background: '#dc2626', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, color: '#fff' }}>
+                  Anular factura
+                </button>
+              )}
+            </div>
+
+          </div>
+        </div>
       )}
 
       <ConfirmModal
