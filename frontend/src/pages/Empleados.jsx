@@ -5,10 +5,12 @@ import PageHeader from '../components/PageHeader.jsx'
 import Modal from '../components/Modal.jsx'
 import FormField, { inputStyle, btnPrimary, card } from '../components/FormField.jsx'
 import DataTable from '../components/DataTable.jsx'
+import ConfirmModal from '../components/ConfirmModal.jsx'
 
 export default function Empleados() {
   const [empleados, setEmpleados] = useState([])
   const [showModal, setShowModal] = useState(false)
+  const [confirmToggle, setConfirmToggle] = useState(null)
   const { register, handleSubmit, reset, formState: { errors } } = useForm()
 
   useEffect(() => {
@@ -22,9 +24,11 @@ export default function Empleados() {
     getEmpleados().then((r) => setEmpleados(r.data))
   }
 
-  async function toggleEstado(e) {
+  async function handleToggle() {
+    const e = confirmToggle
     const nuevoEstado = e.estado_empleado === 'Activo' ? 'Inactivo' : 'Activo'
     await updateEmpleado(e.id_empleado, { estado_empleado: nuevoEstado })
+    setConfirmToggle(null)
     getEmpleados().then((r) => setEmpleados(r.data))
   }
 
@@ -52,7 +56,7 @@ export default function Empleados() {
       cell: info => {
         const e = info.row.original;
         return (
-          <button onClick={() => toggleEstado(e)} style={{ fontSize: '0.8rem', padding: '3px 10px', borderRadius: 4, border: '1px solid #d1d5db', background: '#fff' }}>
+          <button onClick={() => setConfirmToggle(e)} style={{ fontSize: '0.8rem', padding: '3px 10px', borderRadius: 4, border: '1px solid #d1d5db', background: '#fff' }}>
             {e.estado_empleado === 'Activo' ? 'Desactivar' : 'Activar'}
           </button>
         )
@@ -90,6 +94,19 @@ export default function Empleados() {
           </form>
         </Modal>
       )}
+
+      <ConfirmModal
+        isOpen={!!confirmToggle}
+        title={confirmToggle?.estado_empleado === 'Activo' ? 'Desactivar empleado' : 'Activar empleado'}
+        message={
+          confirmToggle?.estado_empleado === 'Activo'
+            ? `¿Seguro que deseas desactivar a ${confirmToggle?.p_nombre} ${confirmToggle?.p_apellido}? El empleado perderá acceso al sistema.`
+            : `¿Seguro que deseas activar a ${confirmToggle?.p_nombre} ${confirmToggle?.p_apellido}?`
+        }
+        confirmColor={confirmToggle?.estado_empleado === 'Activo' ? 'red' : 'blue'}
+        onConfirm={handleToggle}
+        onCancel={() => setConfirmToggle(null)}
+      />
     </div>
   )
 }

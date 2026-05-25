@@ -6,6 +6,7 @@ import { getCerdo, getHistorialPeso, trasladarCerdo, registrarMuerte } from '../
 import PageHeader from '../components/PageHeader.jsx'
 import Modal from '../components/Modal.jsx'
 import FormField, { inputStyle, btnPrimary, btnDanger, card } from '../components/FormField.jsx'
+import ConfirmModal from '../components/ConfirmModal.jsx'
 
 export default function CerdoDetalle() {
   const { id } = useParams()
@@ -13,6 +14,7 @@ export default function CerdoDetalle() {
   const [data, setData] = useState(null)
   const [historial, setHistorial] = useState([])
   const [modal, setModal] = useState(null)
+  const [confirmAction, setConfirmAction] = useState(null)
 
   const trasladarForm = useForm()
   const muerteForm = useForm()
@@ -22,14 +24,24 @@ export default function CerdoDetalle() {
     getHistorialPeso(id).then((r) => setHistorial(r.data)).catch(() => {})
   }, [id])
 
-  async function onTrasladar(values) {
-    await trasladarCerdo(id, values)
+  function requestTraslado(values) {
+    setConfirmAction({ type: 'trasladar', values })
+  }
+
+  function requestMuerte(values) {
+    setConfirmAction({ type: 'muerte', values })
+  }
+
+  async function onTrasladar() {
+    await trasladarCerdo(id, confirmAction.values)
+    setConfirmAction(null)
     setModal(null)
     navigate('/cerdos')
   }
 
-  async function onMuerte(values) {
-    await registrarMuerte(id, values)
+  async function onMuerte() {
+    await registrarMuerte(id, confirmAction.values)
+    setConfirmAction(null)
     setModal(null)
     navigate('/cerdos')
   }
@@ -95,7 +107,7 @@ export default function CerdoDetalle() {
 
       {modal === 'trasladar' && (
         <Modal title="Trasladar cerdo" onClose={() => setModal(null)}>
-          <form onSubmit={trasladarForm.handleSubmit(onTrasladar)}>
+          <form onSubmit={trasladarForm.handleSubmit(requestTraslado)}>
             <FormField label="ID Cochinera destino">
               <input style={inputStyle} type="number" {...trasladarForm.register('id_cochinera_destino', { required: true })} />
             </FormField>
@@ -109,7 +121,7 @@ export default function CerdoDetalle() {
 
       {modal === 'muerte' && (
         <Modal title="Registrar muerte" onClose={() => setModal(null)}>
-          <form onSubmit={muerteForm.handleSubmit(onMuerte)}>
+          <form onSubmit={muerteForm.handleSubmit(requestMuerte)}>
             <FormField label="Causa">
               <input style={inputStyle} {...muerteForm.register('causa', { required: true })} />
             </FormField>
@@ -120,6 +132,19 @@ export default function CerdoDetalle() {
           </form>
         </Modal>
       )}
+
+      <ConfirmModal
+        isOpen={!!confirmAction}
+        title={confirmAction?.type === 'trasladar' ? 'Confirmar traslado' : 'Registrar muerte'}
+        message={
+          confirmAction?.type === 'trasladar'
+            ? `¿Seguro que deseas trasladar el cerdo #${id} a la cochinera seleccionada? Esta acción moverá al animal de su ubicación actual.`
+            : `¿Confirmas que el cerdo #${id} ha fallecido? Esta acción es irreversible y cambiará su estado a Muerto permanentemente.`
+        }
+        confirmColor={confirmAction?.type === 'trasladar' ? 'blue' : 'red'}
+        onConfirm={confirmAction?.type === 'trasladar' ? onTrasladar : onMuerte}
+        onCancel={() => setConfirmAction(null)}
+      />
     </div>
   )
 }

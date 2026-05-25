@@ -5,10 +5,12 @@ import PageHeader from '../components/PageHeader.jsx'
 import Modal from '../components/Modal.jsx'
 import FormField, { inputStyle, btnPrimary, card } from '../components/FormField.jsx'
 import DataTable from '../components/DataTable.jsx'
+import ConfirmModal from '../components/ConfirmModal.jsx'
 
 export default function Clientes() {
   const [clientes, setClientes] = useState([])
   const [showModal, setShowModal] = useState(false)
+  const [confirmToggle, setConfirmToggle] = useState(null)
   const { register, handleSubmit, reset, formState: { errors } } = useForm()
 
   useEffect(() => {
@@ -22,9 +24,11 @@ export default function Clientes() {
     getClientes().then((r) => setClientes(r.data))
   }
 
-  async function toggleEstado(c) {
+  async function handleToggle() {
+    const c = confirmToggle
     const nuevoEstado = c.estado_cliente === 'Activo' ? 'Inactivo' : 'Activo'
     await updateCliente(c.id_cliente, { estado_cliente: nuevoEstado })
+    setConfirmToggle(null)
     getClientes().then((r) => setClientes(r.data))
   }
 
@@ -52,7 +56,7 @@ export default function Clientes() {
       cell: info => {
         const c = info.row.original;
         return (
-          <button onClick={() => toggleEstado(c)} style={{ fontSize: '0.8rem', padding: '3px 10px', borderRadius: 4, border: '1px solid #d1d5db', background: '#fff' }}>
+          <button onClick={() => setConfirmToggle(c)} style={{ fontSize: '0.8rem', padding: '3px 10px', borderRadius: 4, border: '1px solid #d1d5db', background: '#fff' }}>
             {c.estado_cliente === 'Activo' ? 'Desactivar' : 'Activar'}
           </button>
         )
@@ -90,6 +94,19 @@ export default function Clientes() {
           </form>
         </Modal>
       )}
+
+      <ConfirmModal
+        isOpen={!!confirmToggle}
+        title={confirmToggle?.estado_cliente === 'Activo' ? 'Desactivar cliente' : 'Activar cliente'}
+        message={
+          confirmToggle?.estado_cliente === 'Activo'
+            ? `¿Seguro que deseas desactivar a ${confirmToggle?.p_nombre} ${confirmToggle?.p_apellido}? No podrá ser seleccionado en nuevas ventas.`
+            : `¿Seguro que deseas activar a ${confirmToggle?.p_nombre} ${confirmToggle?.p_apellido}?`
+        }
+        confirmColor={confirmToggle?.estado_cliente === 'Activo' ? 'red' : 'blue'}
+        onConfirm={handleToggle}
+        onCancel={() => setConfirmToggle(null)}
+      />
     </div>
   )
 }

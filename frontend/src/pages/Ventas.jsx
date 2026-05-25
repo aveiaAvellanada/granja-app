@@ -6,6 +6,7 @@ import PageHeader from '../components/PageHeader.jsx'
 import Modal from '../components/Modal.jsx'
 import FormField, { inputStyle, btnPrimary, btnDanger, card } from '../components/FormField.jsx'
 import DataTable from '../components/DataTable.jsx'
+import ConfirmModal from '../components/ConfirmModal.jsx'
 
 export default function Ventas() {
   const [ventas, setVentas] = useState([])
@@ -13,6 +14,7 @@ export default function Ventas() {
   const [showModal, setShowModal] = useState(false)
   const [detalleModal, setDetalleModal] = useState(null)
   const [detalleInfo, setDetalleInfo] = useState([])
+  const [confirmAnularId, setConfirmAnularId] = useState(null)
   const [error, setError] = useState('')
   const { register, handleSubmit, reset } = useForm()
 
@@ -38,9 +40,9 @@ export default function Ventas() {
     }
   }
 
-  async function handleAnular(id) {
-    if (!confirm('¿Anular esta factura?')) return
-    await anularFactura(id)
+  async function handleAnular() {
+    await anularFactura(confirmAnularId)
+    setConfirmAnularId(null)
     reload()
   }
 
@@ -83,7 +85,7 @@ export default function Ventas() {
               Ver Detalle
             </button>
             {v.estado_factura !== 'Anulada' && (
-              <button onClick={() => handleAnular(v.id_factura)} style={{ ...btnDanger, fontSize: '0.78rem', padding: '3px 8px' }}>
+              <button onClick={() => setConfirmAnularId(v.id_factura)} style={{ ...btnDanger, fontSize: '0.78rem', padding: '3px 8px' }}>
                 Anular
               </button>
             )}
@@ -152,6 +154,15 @@ export default function Ventas() {
           {detalleInfo.length === 0 && <p style={{ textAlign: 'center', color: '#6b7280', marginTop: '1rem' }}>No hay detalles.</p>}
         </Modal>
       )}
+
+      <ConfirmModal
+        isOpen={!!confirmAnularId}
+        title="Anular factura"
+        message={`¿Seguro que deseas anular la factura #${confirmAnularId}? Los cerdos vendidos volverán a estado Activo y la factura quedará marcada como Anulada.`}
+        confirmColor="red"
+        onConfirm={handleAnular}
+        onCancel={() => setConfirmAnularId(null)}
+      />
     </div>
   )
 }
