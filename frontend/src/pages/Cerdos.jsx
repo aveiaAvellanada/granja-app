@@ -63,8 +63,8 @@ export default function Cerdos() {
             <FormField label="Sexo" error={errors.sexo?.message}>
               <select style={inputStyle} {...register('sexo', { required: 'Requerido' })}>
                 <option value="">Seleccione...</option>
-                <option value="M">Macho</option>
-                <option value="H">Hembra</option>
+                <option value="Macho">Macho</option>
+                <option value="Hembra">Hembra</option>
               </select>
             </FormField>
             <FormField label="ID Raza" error={errors.id_raza?.message}>

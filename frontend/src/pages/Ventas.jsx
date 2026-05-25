@@ -54,14 +54,14 @@ export default function Ventas() {
                 <td>{v.cliente ?? v.id_cliente}</td>
                 <td>{v.empleado ?? v.id_empleado}</td>
                 <td style={{ fontWeight: 700 }}>${v.total ?? v.valor_total ?? '—'}</td>
-                <td>{v.fecha?.slice(0, 10)}</td>
+                <td>{v.fecha_venta?.slice(0, 10)}</td>
                 <td>
-                  <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: '0.8rem', background: v.estado === 'anulada' ? '#fee2e2' : '#dcfce7', color: v.estado === 'anulada' ? '#991b1b' : '#166534' }}>
-                    {v.estado ?? 'activa'}
+                  <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: '0.8rem', background: v.estado_factura === 'Anulada' ? '#fee2e2' : '#dcfce7', color: v.estado_factura === 'Anulada' ? '#991b1b' : '#166534' }}>
+                    {v.estado_factura ?? 'Activa'}
                   </span>
                 </td>
                 <td>
-                  {v.estado !== 'anulada' && (
+                  {v.estado_factura !== 'Anulada' && (
                     <button onClick={() => handleAnular(v.id_factura)} style={{ ...btnDanger, fontSize: '0.78rem', padding: '3px 8px' }}>
                       Anular
                     </button>

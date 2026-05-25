@@ -59,13 +59,19 @@ export default function CerdoDetalle() {
             <table>
               <thead><tr><th>ID</th><th>Relación</th><th>Sexo</th></tr></thead>
               <tbody>
-                {genealogia.map((g, i) => (
-                  <tr key={i}>
-                    <td>{g.id_cerdo}</td>
-                    <td>{g.relacion}</td>
-                    <td>{g.sexo}</td>
-                  </tr>
-                ))}
+                {genealogia.map((g, i) => {
+                  let relacion = g.generacion === 0 ? 'Este cerdo' :
+                                 g.generacion === 1 ? (g.sexo === 'Macho' ? 'Padre' : 'Madre') :
+                                 g.generacion === 2 ? (g.sexo === 'Macho' ? 'Abuelo' : 'Abuela') :
+                                 `Ancestro (Gen ${g.generacion})`;
+                  return (
+                    <tr key={i}>
+                      <td>{g.id_cerdo}</td>
+                      <td>{relacion}</td>
+                      <td>{g.sexo}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

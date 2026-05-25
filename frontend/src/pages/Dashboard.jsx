@@ -43,7 +43,7 @@ export default function Dashboard() {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="total_ventas" name="Total ventas ($)" fill="#2563eb" />
+              <Bar dataKey="total_ingresos" name="Total ingresos ($)" fill="#2563eb" />
               <Bar dataKey="cantidad_cerdos" name="Cerdos vendidos" fill="#10b981" />
             </BarChart>
           </ResponsiveContainer>
@@ -57,13 +57,15 @@ export default function Dashboard() {
             <thead>
               <tr>
                 <th>Tipo</th>
+                <th>Referencia</th>
                 <th>Descripción</th>
               </tr>
             </thead>
             <tbody>
               {alertas.map((a, i) => (
                 <tr key={i}>
-                  <td><span style={{ background: '#fef3c7', color: '#92400e', borderRadius: 4, padding: '2px 8px', fontSize: '0.8rem' }}>{a.tipo}</span></td>
+                  <td><span style={{ background: '#fef3c7', color: '#92400e', borderRadius: 4, padding: '2px 8px', fontSize: '0.8rem' }}>{a.tipo_alerta}</span></td>
+                  <td style={{ fontWeight: 600, color: '#374151' }}>{a.referencia ?? '—'}</td>
                   <td>{a.descripcion ?? JSON.stringify(a)}</td>
                 </tr>
               ))}

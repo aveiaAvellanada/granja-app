@@ -30,8 +30,9 @@ export default function Cochineras() {
   }
 
   async function toggleEstado(c) {
-    const nuevoEstado = c.estado === 'activa' ? 'inactiva' : 'activa'
-    await updateCochinera(c.id_cochinera, { estado: nuevoEstado })
+    // Only toggling between Disponible and En Mantenimiento for simplicity here
+    const nuevoEstado = c.estado_cochinera === 'En Mantenimiento' ? 'Disponible' : 'En Mantenimiento'
+    await updateCochinera(c.id_cochinera, { estado_cochinera: nuevoEstado })
     getCochineras().then((r) => setCochineras(r.data))
   }
 
@@ -45,18 +46,19 @@ export default function Cochineras() {
         {cochineras.map((c) => (
           <div
             key={c.id_cochinera}
-            style={{ ...card, margin: 0, borderLeft: `4px solid #2563eb`, background: ocupacionColor(c.ocupacion_actual ?? c.total_cerdos ?? 0, c.capacidad) }}
+            style={{ ...card, margin: 0, borderLeft: `4px solid #2563eb`, background: ocupacionColor(c.ocupacion_actual ?? 0, c.capacidad_max) }}
           >
-            <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '0.25rem' }}>{c.nombre}</div>
+            <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '0.25rem' }}>Cochinera #{c.id_cochinera}</div>
             <div style={{ fontSize: '0.85rem', color: '#374151' }}>
-              {c.ocupacion_actual ?? c.total_cerdos ?? 0} / {c.capacidad} cerdos
+              {c.ocupacion_actual ?? 0} / {c.capacidad_max} cerdos
             </div>
-            <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.2rem' }}>{c.tipo}</div>
+            <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.2rem' }}>Libres: {c.espacios_libres ?? c.capacidad_max}</div>
+            <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.2rem' }}>Estado: {c.estado_cochinera}</div>
             <button
               onClick={() => toggleEstado(c)}
               style={{ marginTop: '0.75rem', fontSize: '0.78rem', padding: '3px 10px', borderRadius: 4, border: '1px solid #d1d5db', background: '#fff' }}
             >
-              {c.estado === 'activa' ? 'Desactivar' : 'Activar'}
+              {c.estado_cochinera === 'En Mantenimiento' ? 'Habilitar' : 'Mantenimiento'}
             </button>
           </div>
         ))}
@@ -65,10 +67,7 @@ export default function Cochineras() {
       {showModal && (
         <Modal title="Nueva cochinera" onClose={() => setShowModal(false)}>
           <form onSubmit={handleSubmit(onSubmit)}>
-            <FormField label="Nombre"><input style={inputStyle} {...register('nombre', { required: true })} /></FormField>
-            <FormField label="Capacidad"><input style={inputStyle} type="number" {...register('capacidad', { required: true })} /></FormField>
-            <FormField label="Tipo"><input style={inputStyle} {...register('tipo')} /></FormField>
-            <FormField label="Descripción"><input style={inputStyle} {...register('descripcion')} /></FormField>
+            <FormField label="Capacidad Máxima"><input style={inputStyle} type="number" {...register('capacidad_max', { required: true })} /></FormField>
             <button type="submit" style={{ ...btnPrimary, width: '100%' }}>Crear</button>
           </form>
         </Modal>

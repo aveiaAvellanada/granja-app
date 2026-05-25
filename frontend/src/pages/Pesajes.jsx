@@ -49,7 +49,7 @@ export default function Pesajes() {
                 <td>{p.id_pesaje}</td>
                 <td>#{p.id_cerdo}</td>
                 <td style={{ fontWeight: 700 }}>{p.peso_kg}</td>
-                <td>{p.fecha?.slice(0, 10)}</td>
+                <td>{p.fecha_pesaje?.slice(0, 10)}</td>
                 <td>{p.id_empleado}</td>
               </tr>
             ))}

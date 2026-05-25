@@ -37,7 +37,7 @@ export default function Veterinario() {
         </h3>
         <table>
           <thead>
-            <tr><th>Cerdo</th><th>Última revisión</th><th>Días sin revisión</th><th>Cochinera</th><th>Acción</th></tr>
+            <tr><th>Cerdo</th><th>Última revisión</th><th>Días sin revisión</th><th>Acción</th></tr>
           </thead>
           <tbody>
             {pendientes.map((p) => (
@@ -45,7 +45,6 @@ export default function Veterinario() {
                 <td>#{p.id_cerdo}</td>
                 <td>{p.ultima_revision?.slice(0, 10) ?? 'Nunca'}</td>
                 <td style={{ color: '#dc2626', fontWeight: 700 }}>{p.dias_sin_revision ?? '—'}</td>
-                <td>{p.cochinera ?? '—'}</td>
                 <td>
                   <button onClick={() => abrirRevision(p)} style={{ ...btnPrimary, fontSize: '0.8rem', padding: '4px 12px' }}>
                     Registrar revisión
