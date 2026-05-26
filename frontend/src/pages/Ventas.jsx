@@ -5,12 +5,12 @@ import { buscarClientes } from '../api/clientes.api.js'
 import { getCerdos } from '../api/cerdos.api.js'
 import PageHeader from '../components/PageHeader.jsx'
 import Modal from '../components/Modal.jsx'
-import { btnPrimary, btnDanger, card } from '../components/FormField.jsx'
 import DataTable from '../components/DataTable.jsx'
 import ConfirmModal from '../components/ConfirmModal.jsx'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorMessage from '../components/ErrorMessage'
 import ExportButton from '../components/ExportButton'
+import { Icon } from '../components/Icon.jsx'
 
 const formatMoneda = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(val)
 
@@ -164,7 +164,6 @@ export default function Ventas() {
 
     const payload = {
       id_cliente: selectedClient.id_cliente,
-      // id_empleado is securely handled by backend from JWT (req.user.id)
       ids_cerdos: cart.map(c => c.id_cerdo),
       precios: cart.map(c => c.precio)
     }
@@ -218,37 +217,34 @@ export default function Ventas() {
   }
 
   const columns = useMemo(() => [
-    { header: 'Factura', accessorKey: 'id_factura', cell: info => `#${info.getValue()}` },
-    { header: 'Cliente', accessorFn: row => row.cliente ?? row.id_cliente },
-    { header: 'Empleado', accessorFn: row => row.empleado ?? row.id_empleado },
-    { header: 'Total', accessorFn: row => row.total_cop, cell: info => <span style={{ fontWeight: 700 }}>{formatMoneda(info.getValue() ?? 0)}</span> },
-    { header: 'Fecha', accessorKey: 'fecha_venta', cell: info => info.getValue()?.slice(0, 10) },
+    { header: 'Factura', accessorKey: 'id_factura', cell: info => <span className="text-mono">#{info.getValue()}</span> },
+    { header: 'Cliente / Receptor', accessorFn: row => row.cliente ?? row.id_cliente, cell: info => <span className="text-strong">{info.getValue()}</span> },
+    { header: 'Vendedor', accessorFn: row => row.empleado ?? row.id_empleado, cell: info => <span className="text-muted">{info.getValue()}</span> },
+    { header: 'Monto Total', accessorFn: row => row.total_cop, cell: info => <span className="text-strong" style={{ fontSize: '1rem' }}>{formatMoneda(info.getValue() ?? 0)}</span> },
+    { header: 'Fecha Emisión', accessorKey: 'fecha_venta', cell: info => <span className="text-muted">{info.getValue()?.slice(0, 10)}</span> },
     { 
       header: 'Estado', 
       accessorKey: 'estado_factura',
       cell: info => {
         const estado = info.getValue() ?? 'Pendiente';
-        const bg = estado === 'Completada' ? '#dcfce7' : estado === 'Anulada' ? '#fee2e2' : '#fef3c7';
-        const fg = estado === 'Completada' ? '#166534' : estado === 'Anulada' ? '#991b1b' : '#92400e';
-        return (
-          <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: '0.8rem', background: bg, color: fg }}>
-            {estado}
-          </span>
-        )
+        let cls = 'badge-mono';
+        if (estado === 'Completada') cls = 'badge-success';
+        if (estado === 'Anulada') cls = 'badge-danger';
+        return <span className={`badge ${cls}`}>{estado}</span>
       }
     },
     {
-      header: 'Acción',
+      header: 'Acciones',
       id: 'accion',
       cell: info => {
         const v = info.row.original;
         return (
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button onClick={() => handleVerDetalle(v.id_factura)} style={{ ...btnPrimary, fontSize: '0.78rem', padding: '3px 8px' }}>
-              Ver Detalle
+          <div className="row gap-2">
+            <button className="btn btn-secondary btn-sm" onClick={() => handleVerDetalle(v.id_factura)}>
+              <Icon name="receipt" size={14} /> Detalle
             </button>
             {v.estado_factura === 'Completada' && (
-              <button onClick={() => setConfirmAnularId(v.id_factura)} style={{ ...btnDanger, fontSize: '0.78rem', padding: '3px 8px' }}>
+              <button className="btn btn-ghost btn-sm" style={{ color: 'var(--rust)' }} onClick={() => setConfirmAnularId(v.id_factura)}>
                 Anular
               </button>
             )}
@@ -262,125 +258,139 @@ export default function Ventas() {
   const totalFactura = detalleInfo.reduce((acc, d) => acc + Number(d.precio_venta_cop), 0);
 
   return (
-    <div>
+    <div className="page-animate">
       <style>{`
         @media print {
           body * { visibility: hidden; }
           #seccion-impresion, #seccion-impresion * { visibility: visible; }
-          #seccion-impresion { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; }
+          #seccion-impresion { position: absolute; left: 0; top: 0; width: 100%; padding: 0; background: #fff; }
           .no-print { display: none !important; }
+          .card { border: none !important; box-shadow: none !important; }
         }
       `}</style>
-      <PageHeader title="Ventas">
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <ExportButton data={ventas} filename="Ventas" />
-          <button style={btnPrimary} onClick={() => setIsNewSaleOpen(true)}>+ Nueva venta</button>
+
+      <PageHeader title="Ventas y Facturación" icon={<Icon name="receipt" size={20} />}>
+        <div className="row gap-2">
+          <ExportButton data={ventas} filename="Ventas_Export" />
+          <button className="btn btn-primary" onClick={() => setIsNewSaleOpen(true)}>
+            <Icon name="plus" size={14} /> Nueva operación
+          </button>
         </div>
       </PageHeader>
 
       {loading ? (
-        <LoadingSpinner message="Cargando ventas..." />
+        <LoadingSpinner message="Consultando historial transaccional..." />
       ) : error ? (
         <ErrorMessage message={error} onRetry={reload} />
       ) : (
-        <div style={card}>
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <DataTable data={ventas} columns={columns} />
         </div>
       )}
 
+      {/* MODAL NUEVA VENTA - REDISEÑADO TIPO DRAWER CENTRADO */}
       {isNewSaleOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: '#f9fafb', borderRadius: '8px', width: '95%', maxWidth: '1000px', height: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+        <div style={overlay} onClick={requestCloseNewSale}>
+          <div style={saleDrawer} onClick={e => e.stopPropagation()}>
             
-            <div style={{ padding: '1.25rem 2rem', background: '#fff', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ margin: 0, color: '#111827' }}>Registrar Nueva Venta</h2>
-              <button onClick={requestCloseNewSale} style={{ background: 'transparent', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#9ca3af' }}>&times;</button>
+            <div style={drawerHead}>
+              <div className="col">
+                <h2 style={{ fontSize: '1.5rem' }}>Registro de Nueva Venta</h2>
+                <p className="text-muted" style={{ fontSize: '0.85rem' }}>Diligencia los datos del cliente y selecciona los animales.</p>
+              </div>
+              <button className="btn btn-ghost" onClick={requestCloseNewSale} style={{ padding: 8 }}>
+                <Icon name="logout" size={20} />
+              </button>
             </div>
 
-            <div style={{ padding: '2rem', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            <div style={drawerBody} className="scroll-dark col gap-6">
               
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+              <div className="row gap-6">
                 {/* SECCION 1 - CLIENTE */}
-                <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                  <h3 style={{ margin: '0 0 1rem 0', color: '#374151' }}>1. Búsqueda de Cliente</h3>
+                <div className="card col gap-4" style={{ flex: 1 }}>
+                  <h4 className="section-title"><span className="dot" />1. Datos del Receptor</h4>
                   
                   {!selectedClient ? (
-                    <div style={{ position: 'relative' }}>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Buscar por cédula</label>
-                      <input 
-                        type="text" 
-                        maxLength={12}
-                        value={searchCedula}
-                        onChange={(e) => setSearchCedula(e.target.value.replace(/\D/g, ''))}
-                        placeholder="Ej: 1020..."
-                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #d1d5db' }}
-                      />
-                      {clientResults.length > 0 && (
-                        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #d1d5db', borderRadius: '4px', marginTop: '4px', zIndex: 10, maxHeight: '200px', overflowY: 'auto', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-                          {clientResults.map(c => (
-                            <div 
-                              key={c.id_cliente} 
-                              onClick={() => handleSelectClient(c)}
-                              style={{ padding: '0.75rem', borderBottom: '1px solid #f3f4f6', cursor: 'pointer' }}
-                            >
-                              <div style={{ fontWeight: 600 }}>{c.p_nombre} {c.p_apellido}</div>
-                              <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>C.C. {c.cedula_cliente}</div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                    <div className="col gap-2">
+                      <label className="eyebrow">Búsqueda por Identificación</label>
+                      <div style={{ position: 'relative' }}>
+                        <Icon name="search" size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-muted)' }} />
+                        <input 
+                          className="input"
+                          type="text" 
+                          maxLength={12}
+                          value={searchCedula}
+                          onChange={(e) => setSearchCedula(e.target.value.replace(/\D/g, ''))}
+                          placeholder="Cédula del cliente..."
+                          style={{ paddingLeft: 36 }}
+                        />
+                        {clientResults.length > 0 && (
+                          <div style={resultsFloat}>
+                            {clientResults.map(c => (
+                              <div key={c.id_cliente} onClick={() => handleSelectClient(c)} style={resultItem}>
+                                <div className="text-strong">{c.p_nombre} {c.p_apellido}</div>
+                                <div className="text-muted" style={{ fontSize: '0.75rem' }}>C.C. {c.cedula_cliente}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ) : (
-                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '1rem', position: 'relative' }}>
-                      <button 
-                        onClick={handleClearClient}
-                        style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: '4px', width: '24px', height: '24px', cursor: 'pointer' }}
-                        title="Limpiar cliente"
-                      >
-                        &times;
+                    <div className="card-accent card-tight row-between">
+                      <div className="col">
+                        <div className="text-strong" style={{ fontSize: '1rem' }}>{selectedClient.p_nombre} {selectedClient.p_apellido}</div>
+                        <div className="text-muted" style={{ fontSize: '0.8rem' }}>C.C. {selectedClient.cedula_cliente} • {selectedClient.telefono || 'Sin tel.'}</div>
+                      </div>
+                      <button className="btn btn-ghost btn-sm" onClick={handleClearClient} style={{ color: 'var(--rust)' }}>
+                        <Icon name="logout" size={14} />
                       </button>
-                      <div style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '0.25rem' }}>{selectedClient.p_nombre} {selectedClient.s_nombre ?? ''} {selectedClient.p_apellido} {selectedClient.s_apellido ?? ''}</div>
-                      <div style={{ color: '#4b5563', fontSize: '0.9rem' }}>C.C. {selectedClient.cedula_cliente}</div>
-                      <div style={{ color: '#4b5563', fontSize: '0.9rem' }}>Tel: {selectedClient.telefono ?? '—'}</div>
-                      <div style={{ color: '#4b5563', fontSize: '0.9rem' }}>Correo: {selectedClient.correo_cliente ?? '—'}</div>
                     </div>
                   )}
                 </div>
 
-                {/* SECCION 2 - EMPLEADO */}
-                <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                  <h3 style={{ margin: '0 0 1rem 0', color: '#374151' }}>2. Empleado Vendedor</h3>
-                  <div style={{ background: '#f3f4f6', border: '1px dashed #d1d5db', borderRadius: '6px', padding: '1rem' }}>
-                    <div style={{ fontWeight: 600, color: '#111827' }}>{user?.nombre}</div>
-                    <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.25rem' }}>Autenticado automáticamente (ID oculto)</div>
+                {/* SECCION 2 - RESPONSABLE */}
+                <div className="card col gap-4" style={{ flex: 1 }}>
+                  <h4 className="section-title"><span className="dot" />2. Responsable de Operación</h4>
+                  <div className="card-tight row-center gap-3" style={{ background: 'var(--surface-sunken)', borderStyle: 'dashed' }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', background: 'var(--green-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon name="user" size={14} color="var(--green-ink)" />
+                    </div>
+                    <div className="col">
+                      <div className="text-strong">{user?.nombre}</div>
+                      <div className="eyebrow" style={{ fontSize: '0.6rem' }}>Usuario en sesión</div>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* SECCION 3 - CERDOS DISPONIBLES */}
-              <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <h3 style={{ margin: 0, color: '#374151' }}>3. Cerdos Disponibles</h3>
-                  <input 
-                    type="text" 
-                    placeholder="Filtrar por ID o Raza..." 
-                    value={pigSearch}
-                    onChange={(e) => setPigSearch(e.target.value)}
-                    style={{ padding: '0.4rem 0.75rem', borderRadius: '4px', border: '1px solid #d1d5db', width: '250px' }}
-                  />
+              <div className="card col gap-4">
+                <div className="row-between">
+                  <h4 className="section-title" style={{ margin: 0 }}><span className="dot" />3. Selección de Inventario Activo</h4>
+                  <div style={{ position: 'relative' }}>
+                    <Icon name="search" size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-muted)' }} />
+                    <input 
+                      className="input input-sm"
+                      type="text" 
+                      placeholder="Filtrar por ID o Raza..." 
+                      value={pigSearch}
+                      onChange={(e) => setPigSearch(e.target.value)}
+                      style={{ width: 220, paddingLeft: 34, paddingRight: 10, paddingTop: 6, paddingBottom: 6 }}
+                    />
+                  </div>
                 </div>
                 
-                <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '6px' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                    <thead style={{ position: 'sticky', top: 0, background: '#f9fafb', zIndex: 1 }}>
-                      <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                        <th style={{ padding: '0.75rem' }}>Sel.</th>
-                        <th style={{ padding: '0.75rem' }}>ID</th>
-                        <th style={{ padding: '0.75rem' }}>Sexo</th>
-                        <th style={{ padding: '0.75rem' }}>Raza</th>
-                        <th style={{ padding: '0.75rem' }}>Edad</th>
-                        <th style={{ padding: '0.75rem' }}>Último peso</th>
-                        <th style={{ padding: '0.75rem', width: '220px' }}>Precio Venta (COP)</th>
+                <div style={{ maxHeight: '280px', overflowY: 'auto', border: '1px solid var(--border-soft)', borderRadius: 'var(--r-md)' }} className="scroll-dark">
+                  <table style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
+                    <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+                      <tr style={{ background: 'var(--surface-2)' }}>
+                        <th style={{ width: 40 }}>Sel.</th>
+                        <th>ID</th>
+                        <th>Raza / Genética</th>
+                        <th>Peso (kg)</th>
+                        <th>Edad</th>
+                        <th style={{ width: 240 }}>Precio Pactado (COP)</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -390,42 +400,41 @@ export default function Ventas() {
                         const pendingPrice = pendingPrices[p.id_cerdo] || '';
                         
                         return (
-                          <tr key={p.id_cerdo} style={{ borderBottom: '1px solid #f3f4f6', background: inCart ? '#f9fafb' : (isChecked ? '#eff6ff' : 'transparent'), opacity: inCart ? 0.6 : 1 }}>
-                            <td style={{ padding: '0.75rem' }}>
+                          <tr key={p.id_cerdo} style={{ opacity: inCart ? 0.5 : 1, background: isChecked ? 'var(--green-soft)' : 'transparent' }}>
+                            <td>
                               <input 
                                 type="checkbox" 
                                 checked={inCart || isChecked}
                                 disabled={inCart}
                                 onChange={() => toggleCheck(p.id_cerdo)} 
-                                style={{ width: '18px', height: '18px', cursor: inCart ? 'not-allowed' : 'pointer' }}
+                                style={{ cursor: inCart ? 'not-allowed' : 'pointer' }}
                               />
                             </td>
-                            <td style={{ padding: '0.75rem', fontWeight: 600 }}>#{p.id_cerdo}</td>
-                            <td style={{ padding: '0.75rem' }}>{p.sexo_cerdo}</td>
-                            <td style={{ padding: '0.75rem' }}>{p.raza ?? '—'}</td>
-                            <td style={{ padding: '0.75rem' }}>{p.edad_dias ?? '—'} días</td>
-                            <td style={{ padding: '0.75rem' }}>{p.ultimo_peso_kg ?? '—'} kg</td>
-                            <td style={{ padding: '0.75rem' }}>
+                            <td><span className="text-mono text-strong">#{p.id_cerdo}</span></td>
+                            <td>{p.raza || 'Común'}</td>
+                            <td><span className="text-strong">{p.ultimo_peso_kg || '—'}</span></td>
+                            <td className="text-muted" style={{ fontSize: '0.8rem' }}>{p.edad_dias} días</td>
+                            <td>
                               {inCart ? (
-                                <button disabled style={{ padding: '0.35rem 0.75rem', background: '#e5e7eb', color: '#6b7280', border: 'none', borderRadius: '4px', fontWeight: 600, cursor: 'not-allowed' }}>
-                                  En carrito
-                                </button>
+                                <span className="badge badge-success">Agregado</span>
                               ) : (
                                 isChecked && (
-                                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                  <div className="row gap-2">
                                     <input 
+                                      className="input input-sm text-mono"
                                       type="number" 
                                       value={pendingPrice}
                                       onChange={(e) => setPendingPrices(prev => ({...prev, [p.id_cerdo]: e.target.value}))}
-                                      placeholder="Ej: 850000"
-                                      min="1"
-                                      style={{ width: '100px', padding: '0.35rem', border: '1px solid #93c5fd', borderRadius: '4px' }}
+                                      placeholder="Monto..."
+                                      style={{ width: 110, padding: '4px 8px' }}
                                     />
-                                    {parseFloat(pendingPrice) > 0 && (
-                                      <button onClick={() => addToCart(p, pendingPrice)} style={{ padding: '0.35rem 0.75rem', background: '#10b981', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: 600, cursor: 'pointer' }}>
-                                        Agregar
-                                      </button>
-                                    )}
+                                    <button 
+                                      className="btn btn-primary btn-sm" 
+                                      disabled={!pendingPrice || parseFloat(pendingPrice) <= 0}
+                                      onClick={() => addToCart(p, pendingPrice)}
+                                    >
+                                      Agregar
+                                    </button>
                                   </div>
                                 )
                               )}
@@ -433,102 +442,110 @@ export default function Ventas() {
                           </tr>
                         )
                       })}
-                      {filteredPigs.length === 0 && (
-                        <tr>
-                          <td colSpan={7} style={{ padding: '1rem', textAlign: 'center', color: '#6b7280' }}>No se encontraron cerdos activos.</td>
-                        </tr>
-                      )}
                     </tbody>
                   </table>
                 </div>
               </div>
 
               {/* SECCION 4 - CARRITO DE VENTA */}
-              <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                <h3 style={{ margin: '0 0 1rem 0', color: '#374151' }}>4. Carrito de Venta</h3>
+              <div className="card col gap-4">
+                <h4 className="section-title"><span className="dot" />4. Resumen de Operación (Carrito)</h4>
                 
                 {cart.length === 0 ? (
-                  <div style={{ padding: '2rem', textAlign: 'center', color: '#9ca3af', border: '1px dashed #d1d5db', borderRadius: '6px' }}>
-                    El carrito está vacío. Selecciona cerdos en la tabla superior, asigna un precio y haz clic en "Agregar".
+                  <div style={emptyCart}>
+                    <Icon name="receipt" size={32} style={{ opacity: 0.3, marginBottom: 12 }} />
+                    <p className="text-muted" style={{ fontSize: '0.85rem' }}>No se han seleccionado animales para la venta.</p>
                   </div>
                 ) : (
-                  <div style={{ border: '1px solid #e5e7eb', borderRadius: '6px', overflow: 'hidden' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                      <thead style={{ background: '#f9fafb' }}>
-                        <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                          <th style={{ padding: '0.75rem' }}>#</th>
-                          <th style={{ padding: '0.75rem' }}>ID Cerdo</th>
-                          <th style={{ padding: '0.75rem' }}>Raza</th>
-                          <th style={{ padding: '0.75rem' }}>Peso (kg)</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'right' }}>Precio COP</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'center' }}>Acciones</th>
+                  <div style={{ border: '1px solid var(--border-soft)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
+                    <table style={{ borderCollapse: 'separate' }}>
+                      <thead style={{ background: 'var(--surface-2)' }}>
+                        <tr>
+                          <th style={{ width: 40 }}>#</th>
+                          <th>Animal</th>
+                          <th>Detalle</th>
+                          <th style={{ textAlign: 'right' }}>Precio Unitario</th>
+                          <th style={{ textAlign: 'center', width: 100 }}>Acciones</th>
                         </tr>
                       </thead>
                       <tbody>
                         {cart.map((c, idx) => (
-                          <tr key={c.id_cerdo} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                            <td style={{ padding: '0.75rem', color: '#6b7280' }}>{idx + 1}</td>
-                            <td style={{ padding: '0.75rem', fontWeight: 600 }}>#{c.id_cerdo}</td>
-                            <td style={{ padding: '0.75rem' }}>{c.raza ?? '—'}</td>
-                            <td style={{ padding: '0.75rem' }}>{c.peso ?? '—'}</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600, color: '#111827' }}>
+                          <tr key={c.id_cerdo}>
+                            <td className="text-muted">{idx + 1}</td>
+                            <td><span className="text-strong">Cerdo #{c.id_cerdo}</span></td>
+                            <td className="text-muted" style={{ fontSize: '0.8rem' }}>{c.raza || 'N/A'} • {c.peso} kg</td>
+                            <td style={{ textAlign: 'right' }}>
                               {editingCartId === c.id_cerdo ? (
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                                <div className="row gap-1" style={{ justifyContent: 'flex-end' }}>
                                   <input 
+                                    className="input input-sm text-mono"
                                     type="number" 
                                     value={editingCartPrice}
                                     onChange={(e) => setEditingCartPrice(e.target.value)}
-                                    style={{ width: '100px', padding: '0.25rem', border: '1px solid #3b82f6', borderRadius: '4px' }}
+                                    style={{ width: 110, padding: '4px 8px' }}
+                                    autoFocus
                                   />
-                                  <button onClick={() => saveEditPrice(c.id_cerdo)} style={{ background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', padding: '0.25rem 0.5rem' }}>✓</button>
+                                  <button className="btn btn-primary btn-sm" onClick={() => saveEditPrice(c.id_cerdo)} style={{ padding: '4px 8px' }}>
+                                    <Icon name="plus" size={12} />
+                                  </button>
                                 </div>
                               ) : (
-                                formatMoneda(c.precio)
+                                <span className="text-strong">{formatMoneda(c.precio)}</span>
                               )}
                             </td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                            <td style={{ textAlign: 'center' }}>
                               {editingCartId !== c.id_cerdo && (
-                                <>
-                                  <button onClick={() => startEditPrice(c)} style={{ background: 'transparent', border: 'none', color: '#3b82f6', cursor: 'pointer', marginRight: '0.75rem', fontSize: '1.1rem' }} title="Editar precio">✏️</button>
-                                  <button onClick={() => removeFromCart(c.id_cerdo)} style={{ background: 'transparent', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '1.1rem' }} title="Eliminar del carrito">❌</button>
-                                </>
+                                <div className="row-center gap-2" style={{ justifyContent: 'center' }}>
+                                  <button className="btn btn-ghost btn-sm" onClick={() => startEditPrice(c)} title="Editar precio">
+                                    <Icon name="clipboard" size={14} color="var(--info)" />
+                                  </button>
+                                  <button className="btn btn-ghost btn-sm" onClick={() => removeFromCart(c.id_cerdo)} title="Quitar">
+                                    <Icon name="logout" size={14} color="var(--rust)" />
+                                  </button>
+                                </div>
                               )}
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
-                    <div style={{ padding: '1rem', background: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e5e7eb' }}>
-                      <div style={{ color: '#4b5563', fontWeight: 600 }}>Cerdos seleccionados: {cart.length}</div>
-                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827' }}>Total: {formatMoneda(cartTotal)}</div>
+                    <div style={cartTotalRow}>
+                      <div className="row-center gap-2">
+                        <span className="badge badge-mono">{cart.length} animales</span>
+                      </div>
+                      <div className="row-center gap-4">
+                        <span className="eyebrow" style={{ marginTop: 4 }}>Total a Facturar:</span>
+                        <span className="text-display" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--forest)' }}>{formatMoneda(cartTotal)}</span>
+                      </div>
                     </div>
                   </div>
                 )}
               </div>
 
               {newSaleError && (
-                <div style={{ background: '#fee2e2', color: '#991b1b', padding: '1rem', borderRadius: '6px', fontWeight: 600 }}>
-                  Error: {newSaleError}
+                <div className="badge badge-danger" style={{ width: '100%', padding: 12, borderRadius: 'var(--r-md)', textTransform: 'none', justifyContent: 'center' }}>
+                  <Icon name="alert" size={16} /> <strong>Error:</strong> {newSaleError}
                 </div>
               )}
             </div>
 
-            <div style={{ padding: '1.5rem 2rem', background: '#fff', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={drawerFoot}>
               <div>
                 {!isSaleValid && (
-                  <span style={{ color: '#dc2626', fontWeight: 600, fontSize: '0.9rem' }}>⚠️ {validationMsg}</span>
+                  <div className="row-center gap-2" style={{ color: 'var(--rust)', fontSize: '0.85rem', fontWeight: 600 }}>
+                    <Icon name="alert" size={14} /> {validationMsg}
+                  </div>
                 )}
               </div>
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <button onClick={requestCloseNewSale} style={{ padding: '0.75rem 1.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, color: '#374151' }}>
-                  Cancelar
-                </button>
+              <div className="row gap-3">
+                <button className="btn btn-secondary" onClick={requestCloseNewSale} style={{ minWidth: 120 }}>Cancelar</button>
                 <button 
-                  onClick={handleRegisterSale} 
+                  className="btn btn-primary" 
                   disabled={!isSaleValid}
-                  style={{ padding: '0.75rem 2rem', background: isSaleValid ? '#2563eb' : '#9ca3af', border: 'none', borderRadius: '4px', cursor: isSaleValid ? 'pointer' : 'not-allowed', fontWeight: 600, color: '#fff', transition: 'background 0.2s' }}
+                  onClick={handleRegisterSale}
+                  style={{ minWidth: 180, fontSize: '0.95rem' }}
                 >
-                  Registrar Venta
+                  Registrar Venta <Icon name="arrow-right" size={16} />
                 </button>
               </div>
             </div>
@@ -538,118 +555,130 @@ export default function Ventas() {
 
       {/* Success Modal */}
       {successInvoice && (
-        <Modal title="¡Venta Exitosa!" onClose={() => setSuccessInvoice(null)}>
-          <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
-            <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>✅</div>
-            <h3 style={{ margin: '0 0 1rem 0', color: '#111827', fontSize: '1.25rem' }}>Venta registrada — Factura #{successInvoice}</h3>
-            <p style={{ color: '#4b5563', marginBottom: '2rem' }}>La transacción se ha almacenado correctamente.</p>
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-              <button onClick={() => setSuccessInvoice(null)} style={{ padding: '0.75rem 1.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, color: '#374151' }}>
-                Cerrar
-              </button>
-              <button 
-                onClick={() => {
-                  const id = successInvoice;
-                  setSuccessInvoice(null);
-                  handleVerDetalle(id);
-                }} 
-                style={{ ...btnPrimary, padding: '0.75rem 1.5rem' }}
-              >
-                Ver factura
+        <Modal title="Venta Confirmada" onClose={() => setSuccessInvoice(null)}>
+          <div className="col gap-4" style={{ textAlign: 'center', padding: '1rem' }}>
+            <div style={{ fontSize: '3rem' }}>🎉</div>
+            <div>
+              <h3 style={{ fontSize: '1.25rem', marginBottom: 8 }}>¡Transacción Exitosa!</h3>
+              <p className="text-muted">Se ha generado la factura <span className="text-strong text-mono">#{successInvoice}</span> y se ha actualizado el inventario de animales.</p>
+            </div>
+            <div className="divider" />
+            <div className="row gap-3" style={{ justifyContent: 'center' }}>
+              <button className="btn btn-secondary" onClick={() => setSuccessInvoice(null)}>Cerrar</button>
+              <button className="btn btn-primary" onClick={() => { const id = successInvoice; setSuccessInvoice(null); handleVerDetalle(id); }}>
+                <Icon name="receipt" size={16} /> Visualizar Factura
               </button>
             </div>
           </div>
         </Modal>
       )}
 
-      {/* Detalle Factura Modal */}
+      {/* Detalle Factura Modal - REDISEÑO TIPO DOCUMENTO */}
       {detalleModal && primerDetalle && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: '#fff', borderRadius: '8px', width: '95%', maxWidth: '800px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={overlay} onClick={() => setDetalleModal(null)}>
+          <div style={invoiceDoc} onClick={e => e.stopPropagation()}>
             
-            <div id="seccion-impresion" style={{ padding: '2rem', overflowY: 'auto' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #e5e7eb', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-                <div>
-                  <h1 style={{ margin: '0 0 0.5rem 0', fontSize: '2rem', color: '#111827' }}>Factura #{detalleModal}</h1>
-                  <div style={{ color: '#6b7280' }}>Emitida: {formatearFechaLarga(primerDetalle.fecha_venta)}</div>
+            <div id="seccion-impresion" style={docContent}>
+              {/* Header Factura */}
+              <div className="row-between" style={{ marginBottom: '2.5rem' }}>
+                <div className="col gap-1">
+                  <div className="row-center gap-2">
+                    <div style={{ width: 32, height: 32, background: 'var(--forest)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon name="leaf" size={16} color="var(--amber)" />
+                    </div>
+                    <h1 style={{ fontSize: '1.4rem', letterSpacing: '-0.02em' }}>Granja La Voluntad de Dios</h1>
+                  </div>
+                  <p className="text-muted" style={{ fontSize: '0.75rem', marginLeft: 40 }}>Soporte Comercial de Venta de Semovientes</p>
                 </div>
-                <div>
-                  {(() => {
-                    const st = primerDetalle.estado_factura;
-                    const bg = st === 'Completada' ? '#dcfce7' : st === 'Anulada' ? '#fee2e2' : '#fef3c7';
-                    const fg = st === 'Completada' ? '#166534' : st === 'Anulada' ? '#991b1b' : '#92400e';
-                    return <span style={{ padding: '4px 12px', borderRadius: 999, fontSize: '0.9rem', fontWeight: 600, background: bg, color: fg }}>{st}</span>
-                  })()}
+                <div className="col" style={{ textAlign: 'right' }}>
+                  <div className="eyebrow">Factura de Venta</div>
+                  <div className="text-display text-mono" style={{ fontSize: '1.5rem', fontWeight: 800 }}>#{detalleModal}</div>
+                  <span className={`badge ${primerDetalle.estado_factura === 'Completada' ? 'badge-success' : 'badge-danger'}`} style={{ marginTop: 8 }}>
+                    {primerDetalle.estado_factura}
+                  </span>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '2rem', marginBottom: '2rem' }}>
-                <div style={{ flex: 1 }}>
-                  <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', color: '#374151' }}>Datos del Cliente</h3>
-                  <div style={{ color: '#4b5563', lineHeight: '1.6' }}>
-                    <div style={{ fontWeight: 600 }}>{primerDetalle.nombre_cliente}</div>
-                    <div>Cédula: {primerDetalle.cedula_cliente}</div>
-                    <div>Tel: {primerDetalle.telefono_cliente ?? 'N/A'}</div>
-                    <div>Email: {primerDetalle.correo_cliente ?? 'N/A'}</div>
+              {/* Grid Datos */}
+              <div style={docGrid}>
+                <div className="card col gap-3">
+                  <h4 className="section-title" style={{ fontSize: '0.8rem' }}><span className="dot" />Información del Adquirente</h4>
+                  <div className="col gap-1">
+                    <div className="text-strong" style={{ fontSize: '1rem' }}>{primerDetalle.nombre_cliente}</div>
+                    <div className="text-muted" style={{ fontSize: '0.85rem' }}>Identificación: <span className="text-strong">{primerDetalle.cedula_cliente}</span></div>
+                    <div className="text-muted" style={{ fontSize: '0.85rem' }}>Contacto: {primerDetalle.telefono_cliente || 'N/A'}</div>
+                    <div className="text-muted" style={{ fontSize: '0.85rem' }}>E-mail: {primerDetalle.correo_cliente || 'N/A'}</div>
                   </div>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', color: '#374151' }}>Datos del Empleado</h3>
-                  <div style={{ color: '#4b5563', lineHeight: '1.6' }}>
-                    <div style={{ fontWeight: 600 }}>{primerDetalle.nombre_empleado}</div>
+                <div className="card col gap-3">
+                  <h4 className="section-title" style={{ fontSize: '0.8rem' }}><span className="dot" />Detalles de Emisión</h4>
+                  <div className="col gap-1">
+                    <div className="text-muted" style={{ fontSize: '0.85rem' }}>Fecha de Operación:</div>
+                    <div className="text-strong">{formatearFechaLarga(primerDetalle.fecha_venta)}</div>
+                    <div className="divider" style={{ margin: '8px 0' }} />
+                    <div className="text-muted" style={{ fontSize: '0.85rem' }}>Asesor Comercial:</div>
+                    <div className="text-strong">{primerDetalle.nombre_empleado}</div>
                   </div>
                 </div>
               </div>
 
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', marginBottom: '2rem' }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid #e5e7eb', background: '#f9fafb' }}>
-                    <th style={{ padding: '0.75rem 1rem' }}>#</th>
-                    <th style={{ padding: '0.75rem 1rem' }}>ID Cerdo</th>
-                    <th style={{ padding: '0.75rem 1rem' }}>Sexo</th>
-                    <th style={{ padding: '0.75rem 1rem' }}>Raza</th>
-                    <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Precio de Venta</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detalleInfo.map((d, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                      <td style={{ padding: '0.75rem 1rem' }}>{idx + 1}</td>
-                      <td style={{ padding: '0.75rem 1rem' }}>#{d.id_cerdo}</td>
-                      <td style={{ padding: '0.75rem 1rem' }}>{d.sexo_cerdo}</td>
-                      <td style={{ padding: '0.75rem 1rem' }}>{d.raza}</td>
-                      <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>{formatMoneda(d.precio_venta_cop)}</td>
+              {/* Tabla Items */}
+              <div style={{ marginTop: '2rem' }}>
+                <table style={{ borderCollapse: 'separate' }}>
+                  <thead style={{ background: 'var(--surface-2)' }}>
+                    <tr>
+                      <th style={{ padding: '12px' }}>Pos.</th>
+                      <th style={{ padding: '12px' }}>Descripción del Animal</th>
+                      <th style={{ padding: '12px' }}>Genética</th>
+                      <th style={{ padding: '12px', textAlign: 'right' }}>Base Grabable (COP)</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {detalleInfo.map((d, idx) => (
+                      <tr key={idx}>
+                        <td className="text-muted">{idx + 1}</td>
+                        <td><span className="text-strong">Ejemplar #{d.id_cerdo}</span> ({d.sexo_cerdo})</td>
+                        <td className="text-muted">{d.raza}</td>
+                        <td className="text-strong" style={{ textAlign: 'right' }}>{formatMoneda(d.precio_venta_cop)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '1rem', borderTop: '2px solid #e5e7eb' }}>
-                <div style={{ width: '300px', fontSize: '1.1rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                    <span style={{ color: '#4b5563' }}>Cant. Animales:</span>
-                    <span style={{ fontWeight: 600 }}>{detalleInfo.length}</span>
+              {/* Totales */}
+              <div className="row-between" style={docFooter}>
+                <div className="col gap-1" style={{ opacity: 0.6, fontSize: '0.75rem' }}>
+                  <p>Esta factura constituye soporte legal de la transacción.</p>
+                  <p>Documento generado por Hacienda Pro Sistema de Gestión.</p>
+                </div>
+                <div className="col gap-2" style={{ width: 280 }}>
+                  <div className="row-between">
+                    <span className="text-muted">Cantidad Animales:</span>
+                    <span className="text-strong">{detalleInfo.length} und</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.25rem', fontWeight: 700, color: '#111827' }}>
-                    <span>Total General:</span>
-                    <span>{formatMoneda(totalFactura)}</span>
+                  <div className="divider" style={{ margin: '8px 0' }} />
+                  <div className="row-between">
+                    <span className="text-display" style={{ fontWeight: 700, fontSize: '1.1rem' }}>Total Facturado:</span>
+                    <span className="text-display" style={{ fontWeight: 800, fontSize: '1.4rem', color: 'var(--forest)' }}>{formatMoneda(totalFactura)}</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="no-print" style={{ padding: '1rem 2rem', background: '#f9fafb', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-              <button onClick={() => setDetalleModal(null)} style={{ padding: '0.5rem 1.5rem', background: '#e5e7eb', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, color: '#374151' }}>
-                Cerrar
-              </button>
-              <button onClick={() => window.print()} style={{ padding: '0.5rem 1.5rem', background: '#3b82f6', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, color: '#fff' }}>
-                Imprimir
-              </button>
-              {primerDetalle.estado_factura === 'Completada' && (
-                <button onClick={() => setConfirmAnularId(detalleModal)} style={{ padding: '0.5rem 1.5rem', background: '#dc2626', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, color: '#fff' }}>
-                  Anular factura
+            {/* Footer Botones */}
+            <div className="no-print row-between" style={docActions}>
+              <button className="btn btn-secondary" onClick={() => setDetalleModal(null)}>Regresar</button>
+              <div className="row gap-3">
+                <button className="btn btn-secondary" onClick={() => window.print()}>
+                  <Icon name="clipboard" size={16} /> Imprimir Comprobante
                 </button>
-              )}
+                {primerDetalle.estado_factura === 'Completada' && (
+                  <button className="btn btn-ghost" style={{ color: 'var(--rust)' }} onClick={() => setConfirmAnularId(detalleModal)}>
+                    Anular Factura
+                  </button>
+                )}
+              </div>
             </div>
 
           </div>
@@ -658,8 +687,8 @@ export default function Ventas() {
 
       <ConfirmModal
         isOpen={confirmCloseModal}
-        title="Cancelar venta"
-        message="Tienes cerdos en el carrito. ¿Seguro que deseas cerrar sin guardar? Se perderá todo el progreso."
+        title="Cancelar operación"
+        message="Tienes elementos en el carrito. ¿Seguro que deseas abortar el registro de venta? Se perderán todos los datos ingresados."
         confirmColor="red"
         onConfirm={forceCloseNewSale}
         onCancel={() => setConfirmCloseModal(false)}
@@ -667,12 +696,145 @@ export default function Ventas() {
 
       <ConfirmModal
         isOpen={!!confirmAnularId}
-        title="Anular factura"
-        message={"¿Seguro que deseas anular la factura #" + confirmAnularId + "? Los cerdos vendidos volverán a estado Activo y la factura quedará marcada como Anulada."}
+        title="Anulación de Documento"
+        message={`¿Confirma la anulación de la factura #${confirmAnularId}? Esta acción revertirá el estado de los animales a 'Activo' y es un evento auditable.`}
         confirmColor="red"
         onConfirm={handleAnular}
         onCancel={() => setConfirmAnularId(null)}
       />
     </div>
   )
+}
+
+/* ── Styled Components ───────────────────────────────────────── */
+
+const overlay = {
+  position: 'fixed',
+  inset: 0,
+  backgroundColor: 'rgba(11, 30, 19, 0.45)',
+  backdropFilter: 'blur(6px)',
+  zIndex: 100,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '2rem',
+  animation: 'overlayIn var(--dur-base) var(--ease-out) both',
+}
+
+const saleDrawer = {
+  background: 'var(--canvas)',
+  width: '100%',
+  maxWidth: '1080px',
+  height: '92vh',
+  display: 'flex',
+  flexDirection: 'column',
+  borderRadius: 'var(--r-xl)',
+  boxShadow: 'var(--shadow-xl)',
+  overflow: 'hidden',
+  animation: 'modalIn var(--dur-slow) var(--ease-spring) both',
+}
+
+const drawerHead = {
+  padding: '1.25rem 2.5rem',
+  background: 'var(--surface)',
+  borderBottom: '1px solid var(--border-soft)',
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+}
+
+const drawerBody = {
+  padding: '2rem 2.5rem',
+  overflowY: 'auto',
+  flex: 1,
+}
+
+const drawerFoot = {
+  padding: '1.5rem 2.5rem',
+  background: 'var(--surface)',
+  borderTop: '1px solid var(--border-soft)',
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+}
+
+const resultsFloat = {
+  position: 'absolute',
+  top: '100%',
+  left: 0,
+  right: 0,
+  background: 'var(--surface)',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--r-md)',
+  marginTop: '6px',
+  zIndex: 50,
+  maxHeight: '220px',
+  overflowY: 'auto',
+  boxShadow: 'var(--shadow-lg)',
+}
+
+const resultItem = {
+  padding: '12px 16px',
+  borderBottom: '1px solid var(--border-soft)',
+  cursor: 'pointer',
+  transition: 'background var(--dur-fast) ease',
+}
+
+const emptyCart = {
+  padding: '3rem 2rem',
+  textAlign: 'center',
+  background: 'var(--surface-2)',
+  borderRadius: 'var(--r-lg)',
+  border: '2px dashed var(--border)',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+}
+
+const cartTotalRow = {
+  padding: '1.25rem 1.5rem',
+  background: 'var(--surface-sunken)',
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  borderTop: '1px solid var(--border-soft)',
+}
+
+const invoiceDoc = {
+  background: 'var(--surface)',
+  width: '100%',
+  maxWidth: '840px',
+  maxHeight: '94vh',
+  display: 'flex',
+  flexDirection: 'column',
+  borderRadius: 'var(--r-lg)',
+  boxShadow: 'var(--shadow-xl)',
+  overflow: 'hidden',
+  animation: 'modalIn var(--dur-slow) var(--ease-spring) both',
+}
+
+const docContent = {
+  padding: '3.5rem 3rem',
+  overflowY: 'auto',
+  flex: 1,
+}
+
+const docGrid = {
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: '1.5rem',
+  marginBottom: '2rem',
+}
+
+const docFooter = {
+  marginTop: '3rem',
+  paddingTop: '2rem',
+  borderTop: '2.5px solid var(--forest)',
+  alignItems: 'flex-start',
+}
+
+const docActions = {
+  padding: '1.25rem 3rem',
+  background: 'var(--surface-2)',
+  borderTop: '1px solid var(--border-soft)',
 }

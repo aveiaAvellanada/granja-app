@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import {
   flexRender,
   getCoreRowModel,
@@ -7,14 +7,15 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
+import { Icon } from './Icon.jsx'
 
-export default function DataTable({ data, columns }) {
+export default function DataTable({ data, columns, emptyMessage = 'No hay datos disponibles.' }) {
   const [globalFilter, setGlobalFilter] = useState('')
   const [sorting, setSorting] = useState([])
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 })
 
   const table = useReactTable({
-    data,
+    data: Array.isArray(data) ? data : [],
     columns,
     state: { globalFilter, sorting, pagination },
     onGlobalFilterChange: setGlobalFilter,
@@ -32,43 +33,39 @@ export default function DataTable({ data, columns }) {
   const endRow = Math.min((pageIndex + 1) * pageSize, totalRows)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
       {/* Search */}
-      <div>
+      <div style={searchWrap}>
+        <span style={searchIcon}><Icon name="search" size={14} /></span>
         <input
           value={globalFilter ?? ''}
           onChange={e => setGlobalFilter(e.target.value)}
           placeholder="Buscar en la tabla..."
-          style={searchStyle}
+          style={searchInput}
         />
       </div>
 
       {/* Table */}
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <div style={tableScroll}>
+        <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
           <thead>
             {table.getHeaderGroups().map(headerGroup => (
-              <tr key={headerGroup.id} style={{ borderBottom: '2px solid #DDD5C8' }}>
+              <tr key={headerGroup.id}>
                 {headerGroup.headers.map(header => (
                   <th
                     key={header.id}
                     onClick={header.column.getToggleSortingHandler()}
-                    style={{
-                      padding: '10px 14px',
-                      textAlign: 'left',
-                      fontWeight: 700,
-                      fontSize: '0.72rem',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.08em',
-                      color: '#5C5845',
-                      cursor: header.column.getCanSort() ? 'pointer' : 'default',
-                      userSelect: 'none',
-                      whiteSpace: 'nowrap',
-                    }}
+                    style={{ ...thStyle, cursor: header.column.getCanSort() ? 'pointer' : 'default' }}
                   >
-                    {flexRender(header.column.columnDef.header, header.getContext())}
-                    {header.column.getIsSorted() === 'asc' && ' ↑'}
-                    {header.column.getIsSorted() === 'desc' && ' ↓'}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      {flexRender(header.column.columnDef.header, header.getContext())}
+                      {header.column.getIsSorted() === 'asc' && (
+                        <span style={{ color: '#166534', lineHeight: 0 }}><Icon name="arrow-up" size={11} /></span>
+                      )}
+                      {header.column.getIsSorted() === 'desc' && (
+                        <span style={{ color: '#166534', lineHeight: 0 }}><Icon name="arrow-down" size={11} /></span>
+                      )}
+                    </span>
                   </th>
                 ))}
               </tr>
@@ -79,24 +76,12 @@ export default function DataTable({ data, columns }) {
               table.getRowModel().rows.map((row, i) => (
                 <tr
                   key={row.id}
-                  style={{
-                    borderBottom: '1px solid #EDE8DF',
-                    background: i % 2 === 0 ? '#FFFFFF' : '#FAFAF7',
-                    transition: 'background 0.1s',
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(74,124,53,0.05)'}
-                  onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? '#FFFFFF' : '#FAFAF7'}
+                  style={{ background: i % 2 === 0 ? '#FFFFFF' : '#F7FAF4', transition: 'background 80ms ease' }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#DCFCE7'}
+                  onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? '#FFFFFF' : '#F7FAF4'}
                 >
                   {row.getVisibleCells().map(cell => (
-                    <td
-                      key={cell.id}
-                      style={{
-                        padding: '11px 14px',
-                        fontSize: '0.875rem',
-                        color: '#1A1A14',
-                        borderBottom: 'none',
-                      }}
-                    >
+                    <td key={cell.id} style={tdStyle}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
@@ -104,11 +89,11 @@ export default function DataTable({ data, columns }) {
               ))
             ) : (
               <tr>
-                <td
-                  colSpan={columns.length}
-                  style={{ padding: '2rem', textAlign: 'center', color: '#9A9282', fontSize: '0.875rem' }}
-                >
-                  No hay datos disponibles.
+                <td colSpan={columns.length} style={emptyStyle}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, color: '#9CA3AF' }}>
+                    <Icon name="search" size={26} />
+                    <span style={{ fontWeight: 500, fontFamily: "'Inter', sans-serif" }}>{emptyMessage}</span>
+                  </div>
                 </td>
               </tr>
             )}
@@ -119,9 +104,11 @@ export default function DataTable({ data, columns }) {
       {/* Pagination */}
       <div style={paginationWrap}>
         <span style={paginationInfo}>
-          {totalRows === 0 ? 'Sin resultados' : `${startRow}–${endRow} de ${totalRows}`}
+          {totalRows === 0
+            ? 'Sin resultados'
+            : <>Mostrando <strong style={{ color: '#111827' }}>{startRow}–{endRow}</strong> de <strong style={{ color: '#111827' }}>{totalRows}</strong></>}
         </span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <select
             value={pageSize}
             onChange={e => table.setPageSize(Number(e.target.value))}
@@ -131,11 +118,19 @@ export default function DataTable({ data, columns }) {
               <option key={n} value={n}>{n} por página</option>
             ))}
           </select>
-          <div style={{ display: 'flex', gap: '0.3rem' }}>
-            <PagBtn onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()}>«</PagBtn>
-            <PagBtn onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>‹</PagBtn>
-            <PagBtn onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>›</PagBtn>
-            <PagBtn onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()}>»</PagBtn>
+          <div style={{ display: 'flex', gap: 3 }}>
+            <PagBtn onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()}>
+              <Icon name="chevron-left" size={13} /><Icon name="chevron-left" size={13} style={{ marginLeft: -9 }} />
+            </PagBtn>
+            <PagBtn onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
+              <Icon name="chevron-left" size={13} />
+            </PagBtn>
+            <PagBtn onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
+              <Icon name="chevron-right" size={13} />
+            </PagBtn>
+            <PagBtn onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()}>
+              <Icon name="chevron-right" size={13} /><Icon name="chevron-right" size={13} style={{ marginLeft: -9 }} />
+            </PagBtn>
           </div>
         </div>
       </div>
@@ -149,36 +144,81 @@ function PagBtn({ onClick, disabled, children }) {
       onClick={onClick}
       disabled={disabled}
       style={{
-        width: 32,
-        height: 32,
-        border: '1.5px solid #DDD5C8',
-        borderRadius: 6,
-        background: disabled ? '#F4EFE6' : '#FFFFFF',
-        color: disabled ? '#9A9282' : '#1A1A14',
+        minWidth: 32, height: 32, padding: '0 7px',
+        border: '1.5px solid #D5DAD0',
+        borderRadius: 7,
+        background: disabled ? '#F7FAF4' : '#FFFFFF',
+        color: disabled ? '#9CA3AF' : '#374151',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        fontSize: '1rem',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         fontFamily: 'inherit',
-        transition: 'background 0.12s',
+        transition: 'background 100ms ease, border-color 100ms ease',
       }}
+      onMouseEnter={e => { if (!disabled) { e.currentTarget.style.background = '#F2F5EF'; e.currentTarget.style.borderColor = '#B8C4B4'; } }}
+      onMouseLeave={e => { if (!disabled) { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.borderColor = '#D5DAD0'; } }}
     >
       {children}
     </button>
   )
 }
 
-const searchStyle = {
-  padding: '0.55rem 0.875rem',
-  border: '1.5px solid #DDD5C8',
+/* ── Styles ──────────────────────────────────────────────────── */
+
+const searchWrap = { position: 'relative', maxWidth: 320, width: '100%' }
+
+const searchIcon = {
+  position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)',
+  color: '#9CA3AF', pointerEvents: 'none',
+}
+
+const searchInput = {
+  width: '100%',
+  padding: '8px 11px 8px 33px',
+  border: '1.5px solid #D5DAD0',
   borderRadius: 8,
   fontSize: '0.875rem',
-  width: '100%',
-  maxWidth: 300,
   background: '#FFFFFF',
-  color: '#1A1A14',
-  fontFamily: "'Cabin', system-ui, sans-serif",
+  color: '#111827',
+  fontFamily: "'Inter', system-ui, sans-serif",
+  transition: 'border-color 100ms ease, box-shadow 100ms ease',
+}
+
+const tableScroll = {
+  overflowX: 'auto',
+  border: '1px solid #E3E8DF',
+  borderRadius: 10,
+  background: '#FFFFFF',
+}
+
+const thStyle = {
+  padding: '10px 14px',
+  textAlign: 'left',
+  fontWeight: 600,
+  fontSize: '0.68rem',
+  textTransform: 'uppercase',
+  letterSpacing: '0.07em',
+  color: '#6B7280',
+  background: '#F7FAF4',
+  borderBottom: '1.5px solid #D5DAD0',
+  userSelect: 'none',
+  whiteSpace: 'nowrap',
+  fontFamily: "'Inter', system-ui, sans-serif",
+}
+
+const tdStyle = {
+  padding: '10px 14px',
+  fontSize: '0.875rem',
+  color: '#111827',
+  borderBottom: '1px solid #E3E8DF',
+  fontVariantNumeric: 'tabular-nums',
+  fontFamily: "'Inter', system-ui, sans-serif",
+}
+
+const emptyStyle = {
+  padding: '3rem 1rem',
+  textAlign: 'center',
+  color: '#9CA3AF',
+  fontSize: '0.875rem',
 }
 
 const paginationWrap = {
@@ -187,22 +227,22 @@ const paginationWrap = {
   alignItems: 'center',
   flexWrap: 'wrap',
   gap: '0.75rem',
-  paddingTop: '0.5rem',
-  borderTop: '1px solid #EDE8DF',
+  padding: '2px 2px 0',
 }
 
 const paginationInfo = {
-  fontSize: '0.8rem',
-  color: '#9A9282',
-  fontWeight: 500,
+  fontSize: '0.81rem',
+  color: '#9CA3AF',
+  fontFamily: "'Inter', system-ui, sans-serif",
 }
 
 const selectStyle = {
-  padding: '0.3rem 0.6rem',
-  border: '1.5px solid #DDD5C8',
-  borderRadius: 6,
-  fontSize: '0.8rem',
+  padding: '6px 9px',
+  border: '1.5px solid #D5DAD0',
+  borderRadius: 7,
+  fontSize: '0.79rem',
   background: '#FFFFFF',
-  color: '#5C5845',
-  fontFamily: "'Cabin', system-ui, sans-serif",
+  color: '#374151',
+  fontFamily: "'Inter', system-ui, sans-serif",
+  cursor: 'pointer',
 }

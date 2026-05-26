@@ -17,41 +17,13 @@ import {
 import { getCochineras } from '../api/cochineras.api.js'
 import PageHeader from '../components/PageHeader.jsx'
 import Modal from '../components/Modal.jsx'
-import FormField, { inputStyle, btnPrimary, btnDanger, card } from '../components/FormField.jsx'
+import FormField, { inputStyle } from '../components/FormField.jsx'
 import ConfirmModal from '../components/ConfirmModal.jsx'
 import DataTable from '../components/DataTable.jsx'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorMessage from '../components/ErrorMessage'
 import Breadcrumb from '../components/Breadcrumb'
-
-const badgeStyle = (estado) => {
-  let bg = '#f3f4f6'
-  let color = '#6b7280'
-  if (estado === 'Activo') { bg = '#dcfce7'; color = '#166534' }
-  else if (estado === 'Vendido') { bg = '#dbeafe'; color = '#1e40af' }
-  else if (estado === 'Muerto') { bg = '#fee2e2'; color = '#991b1b' }
-  return {
-    padding: '4px 12px',
-    borderRadius: '20px',
-    fontSize: '0.75rem',
-    fontWeight: 700,
-    background: bg,
-    color: color,
-    textTransform: 'uppercase'
-  }
-}
-
-const tabButtonStyle = (active) => ({
-  padding: '0.6rem 1.2rem',
-  cursor: 'pointer',
-  border: 'none',
-  background: active ? '#fff' : 'transparent',
-  borderBottom: active ? '3px solid #2563eb' : '3px solid transparent',
-  fontWeight: active ? '700' : '500',
-  color: active ? '#2563eb' : '#6b7280',
-  transition: 'all 0.2s',
-  fontSize: '0.9rem'
-})
+import { Icon } from '../components/Icon.jsx'
 
 export default function CerdoDetalle() {
   const { id } = useParams()
@@ -145,12 +117,12 @@ export default function CerdoDetalle() {
     { 
       header: 'Origen', 
       accessorKey: 'id_cochinera_origen',
-      cell: info => info.getValue() ? <Link to={`/cochineras/${info.getValue()}`} style={{ color: '#2563eb' }}>Cochinera #{info.getValue()}</Link> : <span style={{ color: '#16a34a', fontWeight: 600 }}>Ingreso inicial</span>
+      cell: info => info.getValue() ? <Link to={`/cochineras/${info.getValue()}`} style={{ color: 'var(--green)', fontWeight: 600 }}>Cochinera #{info.getValue()}</Link> : <span className="badge badge-success">Ingreso inicial</span>
     },
     { 
       header: 'Destino', 
       accessorKey: 'id_cochinera_destino',
-      cell: info => <Link to={`/cochineras/${info.getValue()}`} style={{ color: '#2563eb' }}>Cochinera #{info.getValue()}</Link>
+      cell: info => <Link to={`/cochineras/${info.getValue()}`} style={{ color: 'var(--green)', fontWeight: 600 }}>Cochinera #{info.getValue()}</Link>
     },
     { header: 'Motivo', accessorKey: 'motivo' }
   ], [])
@@ -167,14 +139,14 @@ export default function CerdoDetalle() {
     { header: 'Fecha', accessorFn: row => new Date(row.fecha_registro).toLocaleString() },
     { header: 'Empleado', accessorKey: 'empleado' },
     { header: 'Diagnóstico', accessorKey: 'diagnostico' },
-    { header: 'Medicamento', accessorKey: 'medicamento', cell: info => info.getValue() || <span style={{ color: '#9ca3af' }}>Sin medicamento</span> },
+    { header: 'Medicamento', accessorKey: 'medicamento', cell: info => info.getValue() || <span className="text-muted">Sin medicamento</span> },
     { header: 'Observaciones', accessorKey: 'observaciones' }
   ], [])
 
   const columnsPesajesTable = useMemo(() => [
     { header: 'Fecha', accessorFn: row => new Date(row.fecha_pesaje).toLocaleString() },
     { header: 'Empleado', accessorKey: 'empleado' },
-    { header: 'Peso (kg)', accessorKey: 'peso_kg' },
+    { header: 'Peso (kg)', accessorKey: 'peso_kg', cell: info => <span className="text-strong">{info.getValue()}</span> },
     { header: 'Observaciones', accessorKey: 'observaciones' }
   ], [])
 
@@ -193,127 +165,145 @@ export default function CerdoDetalle() {
     ? (historial.reduce((acc, h) => acc + (parseFloat(h.gdp) || 0), 0) / (historial.length - 1)).toFixed(2)
     : 0
 
+  const getStatusBadge = (estado) => {
+    if (estado === 'Activo') return 'badge-success'
+    if (estado === 'Vendido') return 'badge-info'
+    if (estado === 'Muerto') return 'badge-danger'
+    return ''
+  }
+
   return (
-    <div>
+    <div className="page-animate">
       <Breadcrumb items={breadcrumbItems} />
-      <PageHeader title={`Cerdo #${id}`}>
+      <PageHeader title={`Cerdo #${id}`} icon={<Icon name="pig" size={20} />}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <span style={badgeStyle(cerdo.estado_cerdo)}>{cerdo.estado_cerdo}</span>
+          <span className={`badge ${getStatusBadge(cerdo.estado_cerdo)}`}>{cerdo.estado_cerdo}</span>
           {cerdo.estado_cerdo === 'Activo' && (
-            <>
-              <button style={btnPrimary} onClick={() => setModal('trasladar')}>Trasladar</button>
-              <button style={btnDanger} onClick={() => setModal('muerte')}>Registrar muerte</button>
-            </>
+            <div className="row gap-2">
+              <button className="btn btn-secondary" onClick={() => setModal('trasladar')}>
+                <Icon name="arrow-right" size={14} /> Trasladar
+              </button>
+              <button className="btn btn-danger" onClick={() => setModal('muerte')}>
+                <Icon name="alert" size={14} /> Registrar muerte
+              </button>
+            </div>
           )}
         </div>
       </PageHeader>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
         {/* Datos Básicos */}
-        <div style={card}>
-          <h3 style={{ marginTop: 0, marginBottom: '1.5rem', borderBottom: '2px solid #f3f4f6', paddingBottom: '0.5rem' }}>Datos Básicos</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'x 2rem' }}>
+        <div className="card">
+          <h4 className="section-title"><span className="dot" />Datos de Identificación</h4>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 2rem' }}>
             <Detail label="Sexo" value={cerdo.sexo_cerdo} />
             <Detail label="Raza" value={cerdo.raza} />
-            <Detail label="Fecha Nacimiento" value={new Date(cerdo.fecha_nacimiento).toLocaleDateString()} />
+            <Detail label="Nacimiento" value={new Date(cerdo.fecha_nacimiento).toLocaleDateString()} />
             <Detail label="Edad" value={`${cerdo.edad_dias ?? '—'} días`} />
-            <Detail label="Último peso" value={`${cerdo.ultimo_peso_kg ?? '—'} kg`} />
-            <Detail label="Estado" value={<span style={badgeStyle(cerdo.estado_cerdo)}>{cerdo.estado_cerdo}</span>} />
-            <Detail label="Cochinera Actual" value={
+            <Detail label="Último peso" value={cerdo.ultimo_peso_kg ? `${cerdo.ultimo_peso_kg} kg` : '—'} />
+            <Detail label="Cochinera" value={
               cerdo.id_cochinera_actual 
-                ? `Cochinera #${cerdo.id_cochinera_actual}`
-                : <span style={{ color: '#9ca3af' }}>Sin asignar</span>
+                ? <Link to={`/cochineras/${cerdo.id_cochinera_actual}`} className="text-strong" style={{ color: 'var(--green)' }}>#{cerdo.id_cochinera_actual}</Link>
+                : <span className="text-muted">Sin asignar</span>
             } />
           </div>
         </div>
 
         {/* Información Condicional (Venta o Muerte) */}
         {cerdo.estado_cerdo === 'Vendido' && venta && (
-          <div style={{ ...card, borderLeft: '4px solid #2563eb' }}>
-            <h3 style={{ marginTop: 0, color: '#1e40af' }}>Información de Venta</h3>
-            <Detail label="Factura" value={`#${venta.id_factura}`} />
-            <Detail label="Fecha Venta" value={new Date(venta.fecha_venta).toLocaleDateString()} />
-            <Detail label="Precio" value={`$ ${parseFloat(venta.precio_venta_cop).toLocaleString()}`} />
-            <Detail label="Cliente" value={venta.cliente} />
-            <Detail label="Cédula" value={venta.cedula_cliente} />
-            <Detail label="Teléfono" value={venta.telefono} />
+          <div className="card" style={{ borderLeft: '4px solid var(--info)' }}>
+            <h4 className="section-title" style={{ color: 'var(--info-ink)' }}><span className="dot" style={{ background: 'var(--info)' }} />Detalles de la Venta</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 2rem' }}>
+              <Detail label="Factura" value={`#${venta.id_factura}`} />
+              <Detail label="Fecha Venta" value={new Date(venta.fecha_venta).toLocaleDateString()} />
+              <Detail label="Precio" value={`$ ${parseFloat(venta.precio_venta_cop).toLocaleString()}`} />
+              <Detail label="Cliente" value={venta.cliente} />
+              <Detail label="Cédula" value={venta.cedula_cliente} />
+              <Detail label="Teléfono" value={venta.telefono} />
+            </div>
           </div>
         )}
 
         {cerdo.estado_cerdo === 'Muerto' && mortalidad && (
-          <div style={{ ...card, borderLeft: '4px solid #dc2626' }}>
-            <h3 style={{ marginTop: 0, color: '#991b1b' }}>Información de Deceso</h3>
-            <Detail label="Fecha Deceso" value={new Date(mortalidad.fecha_deceso).toLocaleString()} />
-            <Detail label="Causa" value={mortalidad.causa_muerte} />
-            <Detail label="Método Disposición" value={mortalidad.metodo_disposicion} />
+          <div className="card" style={{ borderLeft: '4px solid var(--rust)' }}>
+            <h4 className="section-title" style={{ color: 'var(--rust-ink)' }}><span className="dot" style={{ background: 'var(--rust)' }} />Informe de Deceso</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 2rem' }}>
+              <Detail label="Fecha Deceso" value={new Date(mortalidad.fecha_deceso).toLocaleString()} />
+              <Detail label="Causa" value={mortalidad.causa_muerte} />
+              <Detail label="Disposición" value={mortalidad.metodo_disposicion} />
+            </div>
           </div>
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
         {/* Gráfica de Peso */}
-        <div style={card}>
-          <h3 style={{ marginTop: 0, marginBottom: '1.5rem' }}>Evolución de Peso</h3>
+        <div className="card">
+          <h4 className="section-title"><span className="dot" />Curva de Crecimiento</h4>
           {historial.length >= 2 ? (
             <>
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={historial}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="fecha_pesaje" tickFormatter={(d) => new Date(d).toLocaleDateString()} fontSize={10} />
-                  <YAxis unit=" kg" fontSize={10} />
+              <ResponsiveContainer width="100%" height={240}>
+                <LineChart data={historial} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-soft)" />
+                  <XAxis dataKey="fecha_pesaje" tick={{ fill: 'var(--ink-3)', fontSize: 10 }} tickFormatter={(d) => new Date(d).toLocaleDateString()} />
+                  <YAxis tick={{ fill: 'var(--ink-3)', fontSize: 10 }} unit="kg" />
                   <Tooltip 
+                    contentStyle={{ borderRadius: 'var(--r-md)', border: '1px solid var(--border-soft)', boxShadow: 'var(--shadow-md)' }}
                     labelFormatter={(d) => new Date(d).toLocaleString()}
-                    formatter={(value, name, props) => {
+                    formatter={(value, name) => {
                       if (name === 'peso_kg') return [`${value} kg`, 'Peso'];
                       if (name === 'gdp') return [`${value} kg/día`, 'GDP'];
                       return [value, name];
                     }}
                   />
-                  <Line type="monotone" dataKey="peso_kg" stroke="#2563eb" strokeWidth={3} dot={{ r: 4, fill: '#2563eb' }} activeDot={{ r: 6 }} />
+                  <Line type="monotone" dataKey="peso_kg" stroke="var(--green)" strokeWidth={3} dot={{ r: 4, fill: 'var(--green)', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />
                 </LineChart>
               </ResponsiveContainer>
-              <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: '1.5rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: '1.5rem', padding: '1rem', background: 'var(--surface-sunken)', borderRadius: 'var(--r-md)' }}>
                 <Stat label="Peso Inicial" value={`${historial[0].peso_kg} kg`} />
                 <Stat label="Peso Actual" value={`${historial[historial.length-1].peso_kg} kg`} />
-                <Stat label="GDP Promedio" value={`${gdpPromedio} kg/día`} />
+                <Stat label="GDP Promedio" value={`${gdpPromedio} kg/d`} color="var(--green-accent)" />
                 <Stat label="Pesajes" value={historial.length} />
               </div>
             </>
           ) : (
-            <div style={{ height: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', borderRadius: '8px', color: '#64748b', textAlign: 'center', padding: '2rem' }}>
-              Se necesitan al menos 2 pesajes para mostrar la evolución de peso y rendimiento.
+            <div style={{ height: 240, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-sunken)', borderRadius: 'var(--r-md)', color: 'var(--ink-muted)', textAlign: 'center', padding: '2rem' }}>
+              <Icon name="chart" size={32} style={{ marginBottom: 12, opacity: 0.5 }} />
+              <p style={{ fontSize: '0.85rem' }}>Datos insuficientes para generar curva.<br />Se requieren al menos 2 pesajes.</p>
             </div>
           )}
         </div>
 
         {/* Árbol Genealógico */}
-        <div style={card}>
-          <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Ancestros y Linaje</h3>
+        <div className="card">
+          <h4 className="section-title"><span className="dot" />Linaje y Ancestros</h4>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%' }}>
               <thead>
-                <tr style={{ textAlign: 'left', borderBottom: '2px solid #f1f5f9' }}>
-                  <th style={{ padding: '0.75rem' }}>Relación</th>
-                  <th style={{ padding: '0.75rem' }}>ID</th>
-                  <th style={{ padding: '0.75rem' }}>Sexo</th>
-                  <th style={{ padding: '0.75rem' }}>Raza</th>
+                <tr>
+                  <th>Relación</th>
+                  <th>Identificador</th>
+                  <th>Sexo</th>
+                  <th>Raza</th>
                 </tr>
               </thead>
               <tbody>
                 {genealogia.map((g, i) => {
-                  let relacion = g.generacion === 0 ? 'Este cerdo' :
+                  let relacion = g.generacion === 0 ? 'Sujeto' :
                                  g.generacion === 1 ? (g.sexo === 'Macho' ? 'Padre' : 'Madre') :
                                  g.generacion === 2 ? (g.sexo === 'Macho' ? 'Abuelo' : 'Abuela') :
                                  g.generacion === 3 ? (g.sexo === 'Macho' ? 'Bisabuelo' : 'Bisabuela') :
                                  `Ancestro (G${g.generacion})`;
                   return (
-                    <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', background: g.generacion === 0 ? '#f8fafc' : 'transparent' }}>
-                      <td style={{ padding: '0.75rem', fontWeight: g.generacion === 0 ? 700 : 500 }}>{relacion}</td>
-                      <td style={{ padding: '0.75rem' }}>
-                        <Link to={`/cerdos/${g.id_cerdo}`} style={{ color: '#2563eb', fontWeight: 600 }}>#{g.id_cerdo}</Link>
+                    <tr key={i} style={{ background: g.generacion === 0 ? 'var(--surface-sunken)' : 'transparent' }}>
+                      <td style={{ fontWeight: g.generacion === 0 ? 700 : 500 }}>{relacion}</td>
+                      <td>
+                        <Link to={`/cerdos/${g.id_cerdo}`} style={{ color: 'var(--green)', fontWeight: 600 }}>
+                          <span className="text-mono">#{g.id_cerdo}</span>
+                        </Link>
                       </td>
-                      <td style={{ padding: '0.75rem' }}>{g.sexo}</td>
-                      <td style={{ padding: '0.75rem', fontSize: '0.85rem' }}>{g.raza}</td>
+                      <td>{g.sexo}</td>
+                      <td style={{ fontSize: '0.8rem' }} className="text-muted">{g.raza}</td>
                     </tr>
                   );
                 })}
@@ -324,18 +314,24 @@ export default function CerdoDetalle() {
       </div>
 
       {/* Historial de Traslados */}
-      <div style={{ ...card, marginBottom: '2rem' }}>
-        <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Historial de Ubicaciones</h3>
+      <div className="card" style={{ marginBottom: '1.5rem' }}>
+        <h4 className="section-title"><span className="dot" />Trazabilidad de Instalaciones</h4>
         <DataTable data={traslados} columns={columnsTraslados} />
       </div>
 
       {/* Historial Operativo (Tabs) */}
-      <div style={card}>
-        <h3 style={{ marginTop: 0, marginBottom: '1.5rem' }}>Historial de Registros</h3>
-        <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem' }}>
-          <button style={tabButtonStyle(activeTab === 1)} onClick={() => setActiveTab(1)}>Alimentación</button>
-          <button style={tabButtonStyle(activeTab === 2)} onClick={() => setActiveTab(2)}>Revisiones Médicas</button>
-          <button style={tabButtonStyle(activeTab === 3)} onClick={() => setActiveTab(3)}>Pesajes</button>
+      <div className="card">
+        <h4 className="section-title"><span className="dot" />Eventos y Seguimiento</h4>
+        <div className="tabs">
+          <button className={`tab-btn ${activeTab === 1 ? 'is-active' : ''}`} onClick={() => setActiveTab(1)}>
+            <Icon name="box" size={14} /> Alimentación
+          </button>
+          <button className={`tab-btn ${activeTab === 2 ? 'is-active' : ''}`} onClick={() => setActiveTab(2)}>
+            <Icon name="shield" size={14} /> Revisiones Médicas
+          </button>
+          <button className={`tab-btn ${activeTab === 3 ? 'is-active' : ''}`} onClick={() => setActiveTab(3)}>
+            <Icon name="chart" size={14} /> Historial de Pesajes
+          </button>
         </div>
         
         <DataTable 
@@ -348,56 +344,68 @@ export default function CerdoDetalle() {
       {modal === 'trasladar' && (
         <Modal title={`Trasladar Cerdo #${id}`} onClose={() => setModal(null)}>
           <form onSubmit={trasladarForm.handleSubmit(requestTraslado)}>
-            <div style={{ marginBottom: '1rem', padding: '1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-              <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>Cochinera actual:</p>
-              <p style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#111827' }}>
-                {cerdo.id_cochinera_actual ? `Cochinera #${cerdo.id_cochinera_actual}` : 'Sin asignar'}
-              </p>
+            <div className="card-accent card-tight" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 'var(--r-md)', background: 'var(--green-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name="barn" size={18} color="var(--green)" />
+              </div>
+              <div>
+                <div className="eyebrow">Instalación Actual</div>
+                <div className="text-strong">
+                  {cerdo.id_cochinera_actual ? `Cochinera #${cerdo.id_cochinera_actual}` : 'Sin asignar'}
+                </div>
+              </div>
             </div>
 
-            <FormField label="Cochinera destino">
-              <select style={inputStyle} {...trasladarForm.register('id_cochinera_destino', { required: true })}>
+            <FormField label="Instalación de destino">
+              <select className="input" {...trasladarForm.register('id_cochinera_destino', { required: true })}>
                 <option value="">Seleccione cochinera...</option>
                 {cochineras
                   .filter(c => c.estado_cochinera !== 'En Mantenimiento' && (c.espacios_libres > 0 || c.id_cochinera === cerdo.id_cochinera_actual))
                   .map(c => (
                     <option key={c.id_cochinera} value={c.id_cochinera}>
-                      Cochinera #{c.id_cochinera} ({c.espacios_libres} espacios libres)
+                      Cochinera #{c.id_cochinera} ({c.espacios_libres} libres)
                     </option>
                   ))
                 }
               </select>
             </FormField>
             
-            <FormField label="Motivo">
-              <textarea style={inputStyle} rows={3} {...trasladarForm.register('motivo')} placeholder="Ej: Cambio por crecimiento" />
+            <FormField label="Justificación del movimiento">
+              <textarea className="input" rows={3} {...trasladarForm.register('motivo')} placeholder="Ej: Separación por peso, mantenimiento de lote..." />
             </FormField>
-            <button type="submit" style={{ ...btnPrimary, width: '100%', marginTop: '1rem' }}>Confirmar traslado</button>
+            <div style={{ marginTop: '1.5rem' }}>
+              <button type="submit" className="btn btn-primary btn-block">Confirmar traslado</button>
+            </div>
           </form>
         </Modal>
       )}
 
       {modal === 'muerte' && (
-        <Modal title="Registrar muerte" onClose={() => setModal(null)}>
+        <Modal title="Reportar Mortalidad" onClose={() => setModal(null)}>
           <form onSubmit={muerteForm.handleSubmit(requestMuerte)}>
-            <FormField label="Causa del deceso">
-              <textarea style={inputStyle} rows={2} {...muerteForm.register('causa', { required: true })} placeholder="Ej: Causas naturales" />
+            <div className="badge badge-danger" style={{ width: '100%', padding: '12px', marginBottom: '1.5rem', justifyContent: 'center', borderRadius: 'var(--r-md)', textTransform: 'none' }}>
+              <Icon name="alert" size={16} /> Atención: Esta acción dará de baja al animal permanentemente.
+            </div>
+            <FormField label="Causa probable del deceso">
+              <textarea className="input" rows={2} {...muerteForm.register('causa', { required: true })} placeholder="Detalles de la condición..." />
             </FormField>
-            <FormField label="Método de disposición">
-              <input style={inputStyle} {...muerteForm.register('metodo_disposicion')} placeholder="Ej: Incineración" />
+            <FormField label="Método de disposición final">
+              <input className="input" {...muerteForm.register('metodo_disposicion')} placeholder="Ej: Incineración, entierro sanitario..." />
             </FormField>
-            <button type="submit" style={{ ...btnDanger, width: '100%', marginTop: '1rem' }}>Registrar Deceso</button>
+            <div style={{ marginTop: '1.5rem' }}>
+              <button type="submit" className="btn btn-danger btn-block">Registrar baja definitiva</button>
+            </div>
           </form>
         </Modal>
       )}
 
       <ConfirmModal
         isOpen={!!confirmAction}
-        title={confirmAction?.type === 'trasladar' ? 'Confirmar traslado' : 'Registrar muerte'}
+        title={confirmAction?.type === 'trasladar' ? 'Confirmar traslado' : 'Registrar mortalidad'}
         message={
           confirmAction?.type === 'trasladar'
-            ? ("¿Trasladar cerdo #" + id + " de " + (cerdo.id_cochinera_actual ? ("Cochinera #" + cerdo.id_cochinera_actual) : 'sin asignar') + " a Cochinera #" + confirmAction.values.id_cochinera_destino + "?")
-            : ("¿Confirmas que el cerdo #" + id + " ha fallecido? Esta acción es irreversible y cambiará su estado a Muerto permanentemente.")
+            ? (`¿Confirmas el traslado del cerdo #${id} a la Cochinera #${confirmAction.values.id_cochinera_destino}?`)
+            : (`¿Confirmas el deceso del cerdo #${id}? El registro se cerrará de forma irreversible.`)
         }
         confirmColor={confirmAction?.type === 'trasladar' ? 'blue' : 'red'}
         onConfirm={confirmAction?.type === 'trasladar' ? onTrasladar : onMuerte}
@@ -409,18 +417,18 @@ export default function CerdoDetalle() {
 
 function Detail({ label, value }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.6rem 0', borderBottom: '1px solid #f1f5f9' }}>
-      <span style={{ color: '#64748b', fontSize: '0.875rem' }}>{label}</span>
-      <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{value ?? '—'}</span>
+    <div className="row-between" style={{ padding: '0.65rem 0', borderBottom: '1px solid var(--border-soft)' }}>
+      <span className="text-muted" style={{ fontSize: '0.8rem', fontWeight: 500 }}>{label}</span>
+      <span className="text-strong" style={{ fontSize: '0.9rem' }}>{value ?? '—'}</span>
     </div>
   )
 }
 
-function Stat({ label, value }) {
+function Stat({ label, value, color = 'var(--ink)' }) {
   return (
-    <div style={{ textAlign: 'center' }}>
-      <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.025em', marginBottom: '0.25rem' }}>{label}</div>
-      <div style={{ fontSize: '1.125rem', fontWeight: 700, color: '#1e293b' }}>{value}</div>
+    <div className="col" style={{ textAlign: 'center' }}>
+      <div className="eyebrow" style={{ marginBottom: 4 }}>{label}</div>
+      <div className="text-strong" style={{ fontSize: '1.1rem', color }}>{value}</div>
     </div>
   )
 }

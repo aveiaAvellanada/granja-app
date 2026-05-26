@@ -16,11 +16,13 @@ const tabButtonStyle = (active) => ({
   padding: '0.75rem 1.5rem',
   cursor: 'pointer',
   border: 'none',
-  background: active ? '#fff' : 'transparent',
-  borderBottom: active ? '3px solid #2563eb' : '3px solid transparent',
+  background: active ? '#FFFFFF' : 'transparent',
+  borderBottom: active ? '3px solid #166534' : '3px solid transparent',
   fontWeight: active ? '700' : '500',
-  color: active ? '#2563eb' : '#6b7280',
-  transition: 'all 0.2s'
+  color: active ? '#166534' : '#6B7280',
+  fontFamily: "'Inter', system-ui, sans-serif",
+  fontSize: '0.875rem',
+  transition: 'color 120ms ease',
 })
 
 export default function Cerdos() {
@@ -99,7 +101,7 @@ export default function Cerdos() {
     {
       header: 'Acciones',
       id: 'acciones',
-      cell: info => <Link to={`/cerdos/${info.row.original.id_cerdo}`} style={{ color: '#2563eb', fontWeight: 600 }}>Ver</Link>
+      cell: info => <Link to={`/cerdos/${info.row.original.id_cerdo}`} style={{ color: 'var(--green)', fontWeight: 600 }}>Ver</Link>
     }
   ], [])
 
@@ -118,7 +120,7 @@ export default function Cerdos() {
     {
       header: 'Acciones',
       id: 'acciones',
-      cell: info => <Link to={`/cerdos/${info.row.original.id_cerdo}`} style={{ color: '#2563eb', fontWeight: 600 }}>Ver</Link>
+      cell: info => <Link to={`/cerdos/${info.row.original.id_cerdo}`} style={{ color: 'var(--green)', fontWeight: 600 }}>Ver</Link>
     }
   ], [])
 
@@ -133,7 +135,7 @@ export default function Cerdos() {
     {
       header: 'Acciones',
       id: 'acciones',
-      cell: info => <Link to={`/cerdos/${info.row.original.id_cerdo}`} style={{ color: '#2563eb', fontWeight: 600 }}>Ver</Link>
+      cell: info => <Link to={`/cerdos/${info.row.original.id_cerdo}`} style={{ color: 'var(--green)', fontWeight: 600 }}>Ver</Link>
     }
   ], [])
 

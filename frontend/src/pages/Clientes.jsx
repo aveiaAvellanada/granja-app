@@ -63,8 +63,9 @@ export default function Clientes() {
       accessorKey: 'estado_cliente',
       cell: info => {
         const estado = info.getValue();
+        const isActivo = estado === 'Activo';
         return (
-          <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: '0.8rem', background: estado === 'Activo' ? '#dcfce7' : '#f3f4f6', color: estado === 'Activo' ? '#166534' : '#6b7280' }}>
+          <span className={`badge ${isActivo ? 'badge-success' : 'badge-mono'}`}>
             {estado}
           </span>
         )

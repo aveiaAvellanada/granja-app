@@ -41,7 +41,7 @@ export default function Pesajes() {
       </PageHeader>
 
       {pendientes.length > 0 && (
-        <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.9rem' }}>
+        <div style={{ background: 'var(--amber-soft)', border: '1px solid var(--amber-line)', borderRadius: 'var(--r-md)', padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--amber-ink)' }}>
           <strong>{pendientes.length} cerdos sin pesaje reciente:</strong>{' '}
           {pendientes.map((p) => `#${p.id_cerdo}`).join(', ')}
         </div>

@@ -4,55 +4,12 @@ import { getInventario, getAlertas, createItem, updateStock } from '../api/inven
 import PageHeader from '../components/PageHeader.jsx'
 import Modal from '../components/Modal.jsx'
 import ConfirmModal from '../components/ConfirmModal.jsx'
-import FormField, { inputStyle, btnPrimary, card } from '../components/FormField.jsx'
+import FormField, { inputStyle } from '../components/FormField.jsx'
 import DataTable from '../components/DataTable.jsx'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorMessage from '../components/ErrorMessage'
 import ExportButton from '../components/ExportButton'
-
-const tabButtonStyle = (active) => ({
-  padding: '0.75rem 1.5rem',
-  cursor: 'pointer',
-  border: 'none',
-  background: active ? '#fff' : 'transparent',
-  borderBottom: active ? '3px solid #2563eb' : '3px solid transparent',
-  fontWeight: active ? '700' : '500',
-  color: active ? '#2563eb' : '#6b7280',
-  transition: 'all 0.2s'
-})
-
-const summaryCardStyle = (color = '#fff', textColor = '#1f2937') => ({
-  ...card,
-  flex: 1,
-  padding: '1.25rem',
-  background: color,
-  color: textColor,
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  textAlign: 'center',
-  minWidth: '200px'
-})
-
-const badgeStyle = (estado) => {
-  let bg = '#f3f4f6'
-  let color = '#6b7280'
-  
-  if (estado === 'Disponible') { bg = '#dcfce7'; color = '#166534' }
-  else if (estado === 'Agotado') { bg = '#fee2e2'; color = '#991b1b' }
-  else if (estado === 'Descontinuado') { bg = '#f3f4f6'; color = '#6b7280' }
-
-  return {
-    padding: '2px 10px',
-    borderRadius: '12px',
-    fontSize: '0.75rem',
-    fontWeight: 600,
-    background: bg,
-    color: color,
-    textTransform: 'uppercase'
-  }
-}
+import { Icon } from '../components/Icon.jsx'
 
 export default function Inventario() {
   const [items, setItems] = useState([])
@@ -149,21 +106,31 @@ export default function Inventario() {
   }, [items, alertas, activeTab])
 
   const columns = useMemo(() => [
-    { header: 'Nombre', accessorKey: 'nombre_item' },
-    { header: 'Tipo', accessorKey: 'tipo_descripcion' },
+    { header: 'Nombre', accessorKey: 'nombre_item', cell: info => <span className="text-strong">{info.getValue()}</span> },
+    { header: 'Tipo', accessorKey: 'tipo_descripcion', cell: info => <span className="text-muted" style={{ fontSize: '0.8rem' }}>{info.getValue()}</span> },
     { 
-      header: 'Stock', 
+      header: 'Stock Actual', 
       accessorFn: row => `${row.cantidad_stock} ${row.abreviatura || ''}`,
-      cell: info => (
-        <span style={{ fontWeight: 700, color: info.row.original.cantidad_stock < 10 ? '#dc2626' : '#111827' }}>
-          {info.getValue()}
-        </span>
-      )
+      cell: info => {
+        const isLow = info.row.original.cantidad_stock < 10 && info.row.original.estado_item !== 'Descontinuado';
+        return (
+          <span className="text-mono" style={{ fontWeight: 700, color: isLow ? 'var(--rust)' : 'var(--ink)' }}>
+            {info.getValue()}
+            {isLow && <Icon name="alert" size={12} style={{ marginLeft: 6, color: 'var(--rust)' }} />}
+          </span>
+        )
+      }
     },
     { 
       header: 'Estado', 
       accessorKey: 'estado_item',
-      cell: info => <span style={badgeStyle(info.getValue())}>{info.getValue()}</span>
+      cell: info => {
+        const val = info.getValue();
+        let cls = 'badge-mono';
+        if (val === 'Disponible') cls = 'badge-success';
+        if (val === 'Agotado') cls = 'badge-danger';
+        return <span className={`badge ${cls}`}>{val}</span>
+      }
     },
     {
       header: 'Acciones',
@@ -171,22 +138,22 @@ export default function Inventario() {
       cell: info => {
         const item = info.row.original;
         return (
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div className="row gap-2">
             <button 
+              className="btn btn-secondary btn-sm"
               onClick={() => { 
                 setEditItem(item); 
                 stockForm.setValue('cantidad_stock', item.cantidad_stock); 
                 setModal('stock') 
-              }}
-              style={{ fontSize: '0.75rem', padding: '4px 8px', borderRadius: 4, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer' }}>
-              Stock
+              }}>
+              <Icon name="box" size={12} /> Stock
             </button>
             <button 
+              className="btn btn-ghost btn-sm"
               onClick={() => { 
                 setEditItem(item); 
                 setShowStatusModal(true);
-              }}
-              style={{ fontSize: '0.75rem', padding: '4px 8px', borderRadius: 4, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer' }}>
+              }}>
               Estado
             </button>
           </div>
@@ -196,50 +163,46 @@ export default function Inventario() {
   ], [stockForm])
 
   return (
-    <div>
-      <PageHeader title="Inventario">
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+    <div className="page-animate">
+      <PageHeader title="Inventario y Almacén" icon={<Icon name="box" size={20} />}>
+        <div className="row gap-2">
           <ExportButton data={filteredItems} filename={`Inventario_Tab${activeTab}`} />
-          <button style={btnPrimary} onClick={() => setModal('nuevo')}>+ Nuevo item</button>
+          <button className="btn btn-primary" onClick={() => setModal('nuevo')}>
+            <Icon name="plus" size={14} /> Nuevo item
+          </button>
         </div>
       </PageHeader>
 
       {loading ? (
-        <LoadingSpinner message="Cargando inventario..." />
+        <LoadingSpinner message="Sincronizando existencias..." />
       ) : error ? (
         <ErrorMessage message={error} onRetry={reload} />
       ) : (
         <>
           {/* Global Summary */}
-          <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-            <div style={summaryCardStyle()}>
-              <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Disponibles</span>
-              <span style={{ fontSize: '1.5rem', fontWeight: 700 }}>{summary.disponibles}</span>
-            </div>
-            <div style={summaryCardStyle()}>
-              <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Agotados</span>
-              <span style={{ fontSize: '1.5rem', fontWeight: 700 }}>{summary.agotados}</span>
-            </div>
-            <div style={summaryCardStyle()}>
-              <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Descontinuados</span>
-              <span style={{ fontSize: '1.5rem', fontWeight: 700 }}>{summary.descontinuados}</span>
-            </div>
-            <div style={summaryCardStyle('#fee2e2', '#991b1b')}>
-              <span style={{ fontSize: '0.875rem' }}>⚠️ Bajo Stock ({"< 10"})</span>
-              <span style={{ fontSize: '1.5rem', fontWeight: 700 }}>{summary.bajoStock}</span>
-            </div>
+          <div style={kpiGrid}>
+            <SummaryCard icon="box" label="Disponibles" value={summary.disponibles} tone="green" />
+            <SummaryCard icon="alert" label="Agotados" value={summary.agotados} tone="neutral" />
+            <SummaryCard icon="receipt" label="Descontinuados" value={summary.descontinuados} tone="neutral" />
+            <SummaryCard icon="alert" label="Bajo Stock (< 10)" value={summary.bajoStock} tone="danger" pulse={summary.bajoStock > 0} />
           </div>
 
           {/* Tabs */}
-          <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem' }}>
-            <button style={tabButtonStyle(activeTab === 1)} onClick={() => setActiveTab(1)}>Alimentos y Suplementos</button>
-            <button style={tabButtonStyle(activeTab === 2)} onClick={() => setActiveTab(2)}>Medicamentos</button>
-            <button style={tabButtonStyle(activeTab === 3)} onClick={() => setActiveTab(3)}>
-              ⚠️ Alertas de stock {alertas.length > 0 && <span style={{ background: '#dc2626', color: '#fff', padding: '1px 6px', borderRadius: '10px', fontSize: '0.7rem', marginLeft: '5px' }}>{alertas.length}</span>}
+          <div className="tabs">
+            <button className={`tab-btn ${activeTab === 1 ? 'is-active' : ''}`} onClick={() => setActiveTab(1)}>
+              Alimentos y Suplementos
+            </button>
+            <button className={`tab-btn ${activeTab === 2 ? 'is-active' : ''}`} onClick={() => setActiveTab(2)}>
+              Medicamentos y Salud
+            </button>
+            <button className={`tab-btn ${activeTab === 3 ? 'is-active' : ''}`} onClick={() => setActiveTab(3)}>
+              <Icon name="alert" size={14} color={alertas.length > 0 ? 'var(--rust)' : 'inherit'} /> 
+              Alertas críticas 
+              {alertas.length > 0 && <span className="count" style={{ background: 'var(--rust)', color: '#fff' }}>{alertas.length}</span>}
             </button>
           </div>
 
-          <div style={card}>
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             <DataTable data={filteredItems} columns={columns} />
           </div>
         </>
@@ -247,27 +210,27 @@ export default function Inventario() {
 
       {/* Modals */}
       {modal === 'nuevo' && (
-        <Modal title="Nuevo item de inventario" onClose={() => setModal(null)}>
+        <Modal title="Crear nuevo registro" onClose={() => setModal(null)}>
           <form onSubmit={handleSubmit(onCreateItem)}>
-            <FormField label="Nombre del item">
-              <input style={inputStyle} {...register('nombre_item', { required: true })} placeholder="Ej: Purina Cerdos" />
+            <FormField label="Nombre descriptivo">
+              <input className="input" {...register('nombre_item', { required: true })} placeholder="Ej: Concentrado Engorde Fase 2" />
             </FormField>
-            <FormField label="Tipo">
-              <select style={inputStyle} {...register('id_tipo_item', { required: true })}>
+            <FormField label="Categoría">
+              <select className="input" {...register('id_tipo_item', { required: true })}>
                 <option value="1">Alimento Concentrado</option>
-                <option value="2">Medicamento</option>
-                <option value="3">Suplemento</option>
+                <option value="2">Medicamento / Veterinario</option>
+                <option value="3">Suplemento / Aditivo</option>
               </select>
             </FormField>
-            <div style={{ display: 'flex', gap: '1rem' }}>
+            <div className="row gap-3">
               <div style={{ flex: 1 }}>
-                <FormField label="Stock inicial">
-                  <input style={inputStyle} type="number" step="0.01" min="0" {...register('cantidad_stock', { required: true })} />
+                <FormField label="Existencia inicial">
+                  <input className="input text-mono" type="number" step="0.01" min="0" {...register('cantidad_stock', { required: true })} />
                 </FormField>
               </div>
               <div style={{ flex: 1 }}>
-                <FormField label="Unidad">
-                  <select style={inputStyle} {...register('id_unidad_base', { required: true })}>
+                <FormField label="Unidad de medida">
+                  <select className="input" {...register('id_unidad_base', { required: true })}>
                     <option value="1">Kilogramos (kg)</option>
                     <option value="2">Gramos (g)</option>
                     <option value="3">Litros (L)</option>
@@ -276,58 +239,101 @@ export default function Inventario() {
                 </FormField>
               </div>
             </div>
-            <FormField label="Estado">
-              <select style={inputStyle} {...register('estado_item', { required: true })}>
+            <FormField label="Estado de disponibilidad">
+              <select className="input" {...register('estado_item', { required: true })}>
                 <option value="Disponible">Disponible</option>
                 <option value="Agotado">Agotado</option>
                 <option value="Descontinuado">Descontinuado</option>
               </select>
             </FormField>
-            <button type="submit" style={{ ...btnPrimary, width: '100%', marginTop: '1rem' }}>Crear Item</button>
+            <div style={{ marginTop: '1.5rem' }}>
+              <button type="submit" className="btn btn-primary btn-block">Registrar en Inventario</button>
+            </div>
           </form>
         </Modal>
       )}
 
       {modal === 'stock' && editItem && (
-        <Modal title={`Actualizar stock — ${editItem.nombre_item}`} onClose={() => { setModal(null); setEditItem(null); }}>
+        <Modal title="Actualizar Existencias" onClose={() => { setModal(null); setEditItem(null); }}>
           <form onSubmit={stockForm.handleSubmit(onUpdateStockSubmit)}>
-            <div style={{ marginBottom: '1rem', padding: '1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-              <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>Stock actual:</p>
-              <p style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#111827' }}>{editItem.cantidad_stock} {editItem.abreviatura}</p>
+            <div className="card-accent" style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
+              <div className="eyebrow" style={{ marginBottom: 4 }}>Balance actual: {editItem.nombre_item}</div>
+              <div className="text-display" style={{ fontSize: '1.75rem', fontWeight: 800 }}>
+                {editItem.cantidad_stock} <span style={{ fontSize: '1rem', color: 'var(--ink-muted)' }}>{editItem.abreviatura}</span>
+              </div>
             </div>
-            <FormField label="Nueva cantidad">
+            <FormField label="Nueva cantidad física en almacén">
               <input 
-                style={inputStyle} 
+                className="input text-mono" 
                 type="number" 
                 step="0.01" 
                 min="0"
+                style={{ fontSize: '1.25rem', textAlign: 'center' }}
                 {...stockForm.register('cantidad_stock', { required: true })} 
                 autoFocus
               />
             </FormField>
-            <button type="submit" style={{ ...btnPrimary, width: '100%', marginTop: '1rem' }}>Actualizar Stock</button>
+            <div style={{ marginTop: '1.5rem' }}>
+              <button type="submit" className="btn btn-primary btn-block">Confirmar ajuste de stock</button>
+            </div>
           </form>
         </Modal>
       )}
 
       {showStatusModal && editItem && (
-        <Modal title={`Cambiar estado — ${editItem.nombre_item}`} onClose={() => { setShowStatusModal(false); setEditItem(null); }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <p>Selecciona el nuevo estado para el item:</p>
-            <button onClick={() => onUpdateStatus('Disponible')} style={{ ...btnPrimary, background: '#16a34a' }}>Disponible</button>
-            <button onClick={() => onUpdateStatus('Agotado')} style={{ ...btnPrimary, background: '#dc2626' }}>Agotado</button>
-            <button onClick={() => onUpdateStatus('Descontinuado')} style={{ ...btnPrimary, background: '#6b7280' }}>Descontinuado</button>
+        <Modal title="Cambiar Estado Operativo" onClose={() => { setShowStatusModal(false); setEditItem(null); }}>
+          <div className="col gap-3">
+            <p className="text-muted" style={{ fontSize: '0.9rem', marginBottom: '0.5rem' }}>
+              Actualiza la disponibilidad de <strong>{editItem.nombre_item}</strong> para el personal:
+            </p>
+            <button className="btn btn-secondary btn-block" style={{ borderLeft: '4px solid var(--green)', justifyContent: 'flex-start' }} onClick={() => onUpdateStatus('Disponible')}>
+              <span className="status-dot green" /> Disponible para uso
+            </button>
+            <button className="btn btn-secondary btn-block" style={{ borderLeft: '4px solid var(--rust)', justifyContent: 'flex-start' }} onClick={() => onUpdateStatus('Agotado')}>
+              <span className="status-dot red" /> Marcar como Agotado
+            </button>
+            <button className="btn btn-secondary btn-block" style={{ borderLeft: '4px solid var(--ink-muted)', justifyContent: 'flex-start' }} onClick={() => onUpdateStatus('Descontinuado')}>
+              <span className="status-dot" style={{ background: 'var(--ink-muted)' }} /> Descontinuar producto
+            </button>
           </div>
         </Modal>
       )}
 
       <ConfirmModal 
         isOpen={showConfirm}
-        title="Confirmar actualización"
-        message={"¿Confirmas actualizar el stock de " + editItem?.nombre_item + " de " + editItem?.cantidad_stock + " a " + pendingStockUpdate + " " + editItem?.abreviatura + "?"}
+        title="Confirmar ajuste de inventario"
+        message={`¿Confirmas que la nueva existencia de ${editItem?.nombre_item} es de ${pendingStockUpdate} ${editItem?.abreviatura}?`}
         onConfirm={confirmStockUpdate}
         onCancel={() => setShowConfirm(false)}
       />
     </div>
   )
+}
+
+function SummaryCard({ icon, label, value, tone = 'neutral', pulse = false }) {
+  const tones = {
+    green:   { bg: 'var(--green-soft)', fg: 'var(--green-ink)', acc: 'var(--green)' },
+    danger:  { bg: 'var(--rust-soft)',  fg: 'var(--rust-ink)',  acc: 'var(--rust)'  },
+    neutral: { bg: 'var(--surface-sunken)', fg: 'var(--ink-2)', acc: 'var(--border)' }
+  }
+  const t = tones[tone];
+  
+  return (
+    <div className="card row-center gap-4" style={{ flex: 1, minWidth: '200px' }}>
+      <div style={{ width: 42, height: 42, borderRadius: 'var(--r-md)', background: t.bg, color: t.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${t.acc}33` }}>
+        <Icon name={icon} size={20} className={pulse ? 'pulse-dot' : ''} />
+      </div>
+      <div className="col">
+        <span className="eyebrow">{label}</span>
+        <span className="text-display" style={{ fontSize: '1.4rem', fontWeight: 800 }}>{value}</span>
+      </div>
+    </div>
+  )
+}
+
+const kpiGrid = {
+  display: 'flex',
+  gap: '1rem',
+  marginBottom: '1.5rem',
+  flexWrap: 'wrap'
 }
