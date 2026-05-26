@@ -50,7 +50,7 @@ export default function App() {
             <Route path="ventas" element={<Ventas />} />
             <Route path="veterinario" element={<Veterinario />} />
 
-            <Route path="cochineras" element={<PrivateRoute requiredRole="administrador"><Cochineras /></PrivateRoute>} />
+            <Route path="cochineras/:id?" element={<PrivateRoute requiredRole="administrador"><Cochineras /></PrivateRoute>} />
             <Route path="empleados" element={<PrivateRoute requiredRole="administrador"><Empleados /></PrivateRoute>} />
             <Route path="clientes" element={<PrivateRoute requiredRole="administrador"><Clientes /></PrivateRoute>} />
           </Route>

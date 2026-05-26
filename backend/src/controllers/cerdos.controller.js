@@ -13,8 +13,22 @@ export async function getCerdo(req, res, next) {
   try {
     const { id } = req.params
     const [cerdo, genealogia] = await Promise.all([
-      pool.query('SELECT * FROM infraestructura.vw_cerdos_activos WHERE id_cerdo = $1', [id]),
-      pool.query('SELECT * FROM infraestructura.fn_arbol_genealogico($1)', [id]),
+      pool.query(`
+        SELECT c.*, r.descripcion AS raza,
+               (SELECT id_cochinera_destino 
+                FROM infraestructura.historial_traslado 
+                WHERE id_cerdo = c.id_cerdo 
+                ORDER BY fecha_traslado DESC LIMIT 1) as id_cochinera_actual,
+               (CURRENT_DATE - c.fecha_nacimiento) as edad_dias,
+               (SELECT peso_kg FROM gestion.pesaje WHERE id_cerdo = c.id_cerdo ORDER BY fecha_pesaje DESC LIMIT 1) as ultimo_peso_kg
+        FROM infraestructura.cerdo c
+        JOIN infraestructura.raza_ref r ON r.id_raza = c.id_raza
+        WHERE c.id_cerdo = $1`, [id]),
+      pool.query(`
+        SELECT g.*, r.descripcion AS raza
+        FROM infraestructura.fn_arbol_genealogico($1) g
+        JOIN infraestructura.cerdo c ON c.id_cerdo = g.id_cerdo
+        JOIN infraestructura.raza_ref r ON r.id_raza = c.id_raza`, [id]),
     ])
     if (cerdo.rows.length === 0) {
       return res.status(404).json({ error: 'Cerdo no encontrado' })

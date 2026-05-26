@@ -1,8 +1,9 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { getCochineras, createCochinera, updateCochinera, getCochineraCerdos } from '../api/cochineras.api.js'
+import { trasladarCerdo } from '../api/cerdos.api.js'
 import PageHeader from '../components/PageHeader.jsx'
 import Modal from '../components/Modal.jsx'
 import FormField, { inputStyle, btnPrimary } from '../components/FormField.jsx'
@@ -12,6 +13,7 @@ import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer } 
 
 export default function Cochineras() {
   const { user } = useAuth()
+  const { id: urlId } = useParams()
   const [cochineras, setCochineras] = useState([])
   const [searchFilter, setSearchFilter] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -19,15 +21,30 @@ export default function Cochineras() {
   const [selectedCochinera, setSelectedCochinera] = useState(null)
   const [cerdosData, setCerdosData] = useState([])
   
+  // Transfer Modal
+  const [transferPig, setTransferPig] = useState(null)
+  const [confirmTransfer, setConfirmTransfer] = useState(null)
+  const transferForm = useForm()
+
   const { register, handleSubmit, reset } = useForm()
 
-  const reload = () => {
-    getCochineras().then((r) => setCochineras(r.data)).catch(() => {})
+  const reload = async () => {
+    try {
+      const res = await getCochineras()
+      setCochineras(res.data)
+      
+      if (urlId && !selectedCochinera) {
+        const found = res.data.find(c => c.id_cochinera === parseInt(urlId))
+        if (found) setSelectedCochinera(found)
+      }
+    } catch (err) {
+      console.error(err)
+    }
   }
 
   useEffect(() => {
     reload()
-  }, [])
+  }, [urlId])
 
   useEffect(() => {
     if (selectedCochinera) {
@@ -49,6 +66,22 @@ export default function Cochineras() {
     reload()
     if (selectedCochinera && selectedCochinera.id_cochinera === id) {
       setSelectedCochinera(prev => ({ ...prev, estado_cochinera: estado }))
+    }
+  }
+
+  async function onTrasladarSubmit(data) {
+    setConfirmTransfer(data)
+  }
+
+  async function execTraslado() {
+    await trasladarCerdo(transferPig.id_cerdo, confirmTransfer)
+    setTransferPig(null)
+    setConfirmTransfer(null)
+    transferForm.reset()
+    reload()
+    // Refresh cerdos list of current cochinera
+    if (selectedCochinera) {
+      getCochineraCerdos(selectedCochinera.id_cochinera).then(r => setCerdosData(r.data)).catch(() => {})
     }
   }
 
@@ -84,9 +117,20 @@ export default function Cochineras() {
     { header: 'Edad (días)', accessorKey: 'edad_dias', cell: info => info.getValue() ?? '—' },
     { header: 'Últ. Peso (kg)', accessorKey: 'ultimo_peso_kg', cell: info => info.getValue() ?? '—' },
     {
-      header: 'Acción',
-      id: 'accion',
-      cell: info => <Link to={`/cerdos/${info.row.original.id_cerdo}`} style={{ color: '#2563eb', fontWeight: 600, textDecoration: 'none' }}>Ver detalle</Link>
+      header: 'Acciones',
+      id: 'acciones',
+      cell: info => (
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <Link to={`/cerdos/${info.row.original.id_cerdo}`} style={{ color: '#2563eb', fontWeight: 600, textDecoration: 'none', fontSize: '0.85rem' }}>Ficha</Link>
+          <button 
+            onClick={() => setTransferPig(info.row.original)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: '#6366f1' }}
+            title="Trasladar cerdo"
+          >
+            ⇄
+          </button>
+        </div>
+      )
     }
   ], [])
 
@@ -293,16 +337,51 @@ export default function Cochineras() {
         </Modal>
       )}
 
+      {/* TRANSFER MODAL */}
+      {transferPig && (
+        <Modal title={`Trasladar Cerdo #${transferPig.id_cerdo}`} onClose={() => setTransferPig(null)}>
+          <form onSubmit={transferForm.handleSubmit(onTrasladarSubmit)}>
+            <div style={{ marginBottom: '1rem', padding: '1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+              <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>Cochinera actual:</p>
+              <p style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#111827' }}>Cochinera #{selectedCochinera?.id_cochinera}</p>
+            </div>
+            <FormField label="Cochinera destino">
+              <select style={inputStyle} {...transferForm.register('id_cochinera_destino', { required: true })}>
+                <option value="">Seleccione destino...</option>
+                {cochineras
+                  .filter(c => c.estado_cochinera !== 'En Mantenimiento' && c.espacios_libres > 0 && c.id_cochinera !== selectedCochinera?.id_cochinera)
+                  .map(c => (
+                    <option key={c.id_cochinera} value={c.id_cochinera}>
+                      Cochinera #{c.id_cochinera} ({c.espacios_libres} espacios libres)
+                    </option>
+                  ))
+                }
+              </select>
+            </FormField>
+            <FormField label="Motivo">
+              <textarea style={inputStyle} rows={3} {...transferForm.register('motivo')} />
+            </FormField>
+            <button type="submit" style={{ ...btnPrimary, width: '100%', marginTop: '1rem' }}>Siguiente</button>
+          </form>
+        </Modal>
+      )}
+
       <ConfirmModal
         isOpen={!!confirmToggle}
         title="Cambiar estado"
         message={`¿Seguro que deseas cambiar el estado de la cochinera #${selectedCochinera?.id_cochinera} a "${confirmToggle?.estado}"?`}
         confirmColor="blue"
         onConfirm={handleToggle}
-        onCancel={() => {
-          setConfirmToggle(null);
-          // React-hook-form does not manage this select, so just force re-render by doing nothing
-        }}
+        onCancel={() => setConfirmToggle(null)}
+      />
+
+      <ConfirmModal
+        isOpen={!!confirmTransfer}
+        title="Confirmar traslado"
+        message={`¿Trasladar cerdo #${transferPig?.id_cerdo} de Cochinera #${selectedCochinera?.id_cochinera} a Cochinera #${confirmTransfer?.id_cochinera_destino}?`}
+        confirmColor="blue"
+        onConfirm={execTraslado}
+        onCancel={() => setConfirmTransfer(null)}
       />
     </div>
   )

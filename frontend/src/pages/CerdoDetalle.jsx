@@ -14,6 +14,7 @@ import {
   getRevisionesCerdo,
   getPesajesCerdo
 } from '../api/cerdos.api.js'
+import { getCochineras } from '../api/cochineras.api.js'
 import PageHeader from '../components/PageHeader.jsx'
 import Modal from '../components/Modal.jsx'
 import FormField, { inputStyle, btnPrimary, btnDanger, card } from '../components/FormField.jsx'
@@ -57,6 +58,7 @@ export default function CerdoDetalle() {
   const [venta, setVenta] = useState(null)
   const [mortalidad, setMortalidad] = useState(null)
   const [traslados, setTraslados] = useState([])
+  const [cochineras, setCochineras] = useState([])
   
   // History Tabs
   const [activeTab, setActiveTab] = useState(1) // 1: Alimentación, 2: Revisiones, 3: Pesajes
@@ -72,13 +74,14 @@ export default function CerdoDetalle() {
 
   const loadData = async () => {
     try {
-      const [rCerdo, rPeso, rTraslados, rAlim, rRev, rPes] = await Promise.all([
+      const [rCerdo, rPeso, rTraslados, rAlim, rRev, rPes, rCoch] = await Promise.all([
         getCerdo(id),
         getHistorialPeso(id),
         getTrasladosCerdo(id),
         getAlimentacionCerdo(id),
         getRevisionesCerdo(id),
-        getPesajesCerdo(id)
+        getPesajesCerdo(id),
+        getCochineras()
       ])
       
       setData(rCerdo.data)
@@ -87,6 +90,7 @@ export default function CerdoDetalle() {
       setAlimentacion(rAlim.data)
       setRevisiones(rRev.data)
       setPesajes(rPes.data)
+      setCochineras(rCoch.data)
 
       if (rCerdo.data.cerdo.estado_cerdo === 'Vendido') {
         const rVenta = await getVentaCerdo(id)
@@ -200,16 +204,6 @@ export default function CerdoDetalle() {
               cerdo.id_cochinera_actual 
                 ? <Link to={`/cochineras/${cerdo.id_cochinera_actual}`} style={{ color: '#2563eb', fontWeight: 600 }}>Cochinera #{cerdo.id_cochinera_actual}</Link>
                 : <span style={{ color: '#9ca3af' }}>Sin asignar</span>
-            } />
-            <Detail label="Padre" value={
-              cerdo.id_cerdo_padre 
-                ? <Link to={`/cerdos/${cerdo.id_cerdo_padre}`} style={{ color: '#2563eb', fontWeight: 600 }}>#{cerdo.id_cerdo_padre}</Link>
-                : <span style={{ color: '#9ca3af' }}>Desconocido</span>
-            } />
-            <Detail label="Madre" value={
-              cerdo.id_cerdo_madre 
-                ? <Link to={`/cerdos/${cerdo.id_cerdo_madre}`} style={{ color: '#2563eb', fontWeight: 600 }}>#{cerdo.id_cerdo_madre}</Link>
-                : <span style={{ color: '#9ca3af' }}>Desconocido</span>
             } />
           </div>
         </div>
@@ -333,11 +327,29 @@ export default function CerdoDetalle() {
 
       {/* Modales */}
       {modal === 'trasladar' && (
-        <Modal title="Trasladar cerdo" onClose={() => setModal(null)}>
+        <Modal title={`Trasladar Cerdo #${id}`} onClose={() => setModal(null)}>
           <form onSubmit={trasladarForm.handleSubmit(requestTraslado)}>
-            <FormField label="ID Cochinera destino">
-              <input style={inputStyle} type="number" {...trasladarForm.register('id_cochinera_destino', { required: true })} />
+            <div style={{ marginBottom: '1rem', padding: '1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+              <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>Cochinera actual:</p>
+              <p style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#111827' }}>
+                {cerdo.id_cochinera_actual ? `Cochinera #${cerdo.id_cochinera_actual}` : 'Sin asignar'}
+              </p>
+            </div>
+
+            <FormField label="Cochinera destino">
+              <select style={inputStyle} {...trasladarForm.register('id_cochinera_destino', { required: true })}>
+                <option value="">Seleccione cochinera...</option>
+                {cochineras
+                  .filter(c => c.estado_cochinera !== 'En Mantenimiento' && (c.espacios_libres > 0 || c.id_cochinera === cerdo.id_cochinera_actual))
+                  .map(c => (
+                    <option key={c.id_cochinera} value={c.id_cochinera}>
+                      Cochinera #{c.id_cochinera} ({c.espacios_libres} espacios libres)
+                    </option>
+                  ))
+                }
+              </select>
             </FormField>
+            
             <FormField label="Motivo">
               <textarea style={inputStyle} rows={3} {...trasladarForm.register('motivo')} placeholder="Ej: Cambio por crecimiento" />
             </FormField>
@@ -365,7 +377,7 @@ export default function CerdoDetalle() {
         title={confirmAction?.type === 'trasladar' ? 'Confirmar traslado' : 'Registrar muerte'}
         message={
           confirmAction?.type === 'trasladar'
-            ? `¿Seguro que deseas trasladar el cerdo #${id} a la cochinera #${confirmAction.values.id_cochinera_destino}?`
+            ? `¿Trasladar cerdo #${id} de ${cerdo.id_cochinera_actual ? `Cochinera #${cerdo.id_cochinera_actual}` : 'sin asignar'} a Cochinera #${confirmAction.values.id_cochinera_destino}?`
             : `¿Confirmas que el cerdo #${id} ha fallecido? Esta acción es irreversible y cambiará su estado a Muerto permanentemente.`
         }
         confirmColor={confirmAction?.type === 'trasladar' ? 'blue' : 'red'}
