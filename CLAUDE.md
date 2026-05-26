@@ -21,7 +21,7 @@ Permite gestionar cerdos, cochineras, alimentación, revisiones médicas, pesaje
 ```
 Backend:   Node.js v25 + Express
 Frontend:  React + Vite
-BD 1:      PostgreSQL en Supabase
+BD 1:      PostgreSQL en Neon
 BD 2:      MongoDB Atlas (granja_analytics)
 Deploy:    Railway (backend) + Vercel (frontend)
 Auth:      JWT con bcrypt — login con usuario y contraseña

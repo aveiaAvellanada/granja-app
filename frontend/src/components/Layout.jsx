@@ -10,6 +10,7 @@ const allNav = [
   { to: '/inventario', label: 'Inventario' },
   { to: '/registros', label: 'Registros' },
   { to: '/ventas', label: 'Ventas' },
+  { to: '/reportes', label: 'Reportes', adminOnly: true },
 ]
 
 export default function Layout() {

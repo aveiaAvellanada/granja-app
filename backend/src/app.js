@@ -15,6 +15,7 @@ import ventasRoutes from './routes/ventas.routes.js'
 import dashboardRoutes from './routes/dashboard.routes.js'
 import clientesRoutes from './routes/clientes.routes.js'
 import razasRoutes from './routes/razas.routes.js'
+import reportesRoutes from './routes/reportes.routes.js'
 import { authMiddleware } from './middleware/auth.middleware.js'
 import { startSyncWorker } from './workers/sync.worker.js'
 
@@ -43,6 +44,7 @@ app.use('/api/ventas', ventasRoutes)
 app.use('/api/dashboard', dashboardRoutes)
 app.use('/api/clientes', clientesRoutes)
 app.use('/api/razas', authMiddleware, razasRoutes)
+app.use('/api/reportes', authMiddleware, reportesRoutes)
 
 app.use(errorMiddleware)
 
