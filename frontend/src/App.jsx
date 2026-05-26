@@ -8,7 +8,7 @@ import CerdoDetalle from './pages/CerdoDetalle.jsx'
 import Cochineras from './pages/Cochineras.jsx'
 import Empleados from './pages/Empleados.jsx'
 import Inventario from './pages/Inventario.jsx'
-import Pesajes from './pages/Pesajes.jsx'
+import Registros from './pages/Registros.jsx'
 import Ventas from './pages/Ventas.jsx'
 import Veterinario from './pages/Veterinario.jsx'
 import Clientes from './pages/Clientes.jsx'
@@ -45,7 +45,8 @@ export default function App() {
             <Route path="cerdos" element={<Cerdos />} />
             <Route path="cerdos/:id" element={<CerdoDetalle />} />
             <Route path="inventario" element={<Inventario />} />
-            <Route path="pesajes" element={<Pesajes />} />
+            <Route path="registros" element={<Registros />} />
+            <Route path="pesajes" element={<Navigate to="/registros" replace />} />
             <Route path="ventas" element={<Ventas />} />
             <Route path="veterinario" element={<Veterinario />} />
 

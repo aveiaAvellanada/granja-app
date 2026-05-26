@@ -8,7 +8,7 @@ const allNav = [
   { to: '/clientes', label: 'Clientes', adminOnly: true },
   { to: '/empleados', label: 'Empleados', adminOnly: true },
   { to: '/inventario', label: 'Inventario' },
-  { to: '/pesajes', label: 'Pesajes' },
+  { to: '/registros', label: 'Registros' },
   { to: '/ventas', label: 'Ventas' },
   { to: '/veterinario', label: 'Veterinario' },
 ]

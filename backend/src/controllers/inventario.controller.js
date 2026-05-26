@@ -83,3 +83,12 @@ export async function updateStock(req, res, next) {
     next(err)
   }
 }
+
+export async function getUnidades(req, res, next) {
+  try {
+    const result = await pool.query('SELECT * FROM gestion.unidad_medida_ref ORDER BY nombre')
+    res.json(result.rows)
+  } catch (err) {
+    next(err)
+  }
+}

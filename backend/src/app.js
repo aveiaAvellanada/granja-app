@@ -10,6 +10,7 @@ import empleadosRoutes from './routes/empleados.routes.js'
 import inventarioRoutes from './routes/inventario.routes.js'
 import pesajesRoutes from './routes/pesajes.routes.js'
 import veterinarioRoutes from './routes/veterinario.routes.js'
+import registrosRoutes from './routes/registros.routes.js'
 import ventasRoutes from './routes/ventas.routes.js'
 import dashboardRoutes from './routes/dashboard.routes.js'
 import clientesRoutes from './routes/clientes.routes.js'
@@ -36,6 +37,7 @@ app.use('/api/empleados', empleadosRoutes)
 app.use('/api/inventario', inventarioRoutes)
 app.use('/api/pesajes', pesajesRoutes)
 app.use('/api/veterinario', veterinarioRoutes)
+app.use('/api/registros', authMiddleware, registrosRoutes)
 app.use('/api/ventas', ventasRoutes)
 app.use('/api/dashboard', dashboardRoutes)
 app.use('/api/clientes', clientesRoutes)
