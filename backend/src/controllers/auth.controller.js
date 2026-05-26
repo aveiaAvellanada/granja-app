@@ -60,3 +60,51 @@ export function me(req, res) {
 export function logout(req, res) {
   res.json({ message: 'Sesión cerrada' })
 }
+
+export async function cambiarPassword(req, res, next) {
+  try {
+    const { contrasena_actual, contrasena_nueva } = req.body
+    const { id, rol } = req.user
+
+    if (!contrasena_actual || !contrasena_nueva) {
+      return res.status(400).json({ error: 'Todos los campos son obligatorios' })
+    }
+
+    if (contrasena_nueva.length < 8) {
+      return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 8 caracteres' })
+    }
+
+    let result
+    if (rol === 'administrador') {
+      // Verificar actual
+      result = await pool.query(
+        'SELECT id_admin FROM personal.administrador WHERE id_admin = $1 AND contrasena_admin = crypt($2, contrasena_admin)',
+        [id, contrasena_actual]
+      )
+      if (result.rows.length === 0) return res.status(401).json({ error: 'Contraseña actual incorrecta' })
+      
+      // Actualizar
+      await pool.query(
+        "UPDATE personal.administrador SET contrasena_admin = crypt($1, gen_salt('bf', 12)) WHERE id_admin = $2",
+        [contrasena_nueva, id]
+      )
+    } else {
+      // Verificar actual
+      result = await pool.query(
+        'SELECT id_empleado FROM personal.empleado WHERE id_empleado = $1 AND contrasena_empleado = crypt($2, contrasena_empleado)',
+        [id, contrasena_actual]
+      )
+      if (result.rows.length === 0) return res.status(401).json({ error: 'Contraseña actual incorrecta' })
+      
+      // Actualizar
+      await pool.query(
+        "UPDATE personal.empleado SET contrasena_empleado = crypt($1, gen_salt('bf', 12)) WHERE id_empleado = $2",
+        [contrasena_nueva, id]
+      )
+    }
+
+    res.json({ message: 'Contraseña actualizada exitosamente' })
+  } catch (err) {
+    next(err)
+  }
+}

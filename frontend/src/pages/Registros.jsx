@@ -9,6 +9,9 @@ import PageHeader from '../components/PageHeader'
 import DataTable from '../components/DataTable'
 import Modal from '../components/Modal'
 import FormField, { inputStyle, btnPrimary, card } from '../components/FormField'
+import LoadingSpinner from '../components/LoadingSpinner'
+import ErrorMessage from '../components/ErrorMessage'
+import ExportButton from '../components/ExportButton'
 
 const tabButtonStyle = (active) => ({
   padding: '0.75rem 1.5rem',
@@ -26,7 +29,8 @@ export default function Registros() {
   const location = useLocation()
   const [activeTab, setActiveTab] = useState(1) // 1: Alimentación, 2: Revisión, 3: Pesajes
   const [data, setData] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [modal, setModal] = useState(null)
   
   const [cerdos, setCerdos] = useState([])
@@ -48,6 +52,7 @@ export default function Registros() {
 
   const loadTabContent = async () => {
     setLoading(true)
+    setError(null)
     try {
       let res
       if (activeTab === 1) res = await getAlimentacion()
@@ -55,7 +60,7 @@ export default function Registros() {
       else res = await getPesajes()
       setData(res.data)
     } catch (err) {
-      console.error(err)
+      setError(err.response?.data?.error || 'Error al cargar registros')
     } finally {
       setLoading(false)
     }
@@ -140,6 +145,7 @@ export default function Registros() {
     <div>
       <PageHeader title="Registros Operativos">
         <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <ExportButton data={data} filename={`Registros_Tab${activeTab}`} />
           {activeTab === 1 && <button style={btnPrimary} onClick={() => setModal('alimentacion')}>+ Registrar alimentación</button>}
           {activeTab === 2 && <button style={btnPrimary} onClick={() => setModal('revision')}>+ Registrar revisión</button>}
           {activeTab === 3 && <button style={btnPrimary} onClick={() => setModal('pesaje')}>+ Registrar pesaje</button>}
@@ -152,13 +158,19 @@ export default function Registros() {
         <button style={tabButtonStyle(activeTab === 3)} onClick={() => setActiveTab(3)}>Pesajes</button>
       </div>
 
-      <div style={card}>
-        <DataTable data={data} columns={
-          activeTab === 1 ? columnsAlimentacion : 
-          activeTab === 2 ? columnsRevision : 
-          columnsPesajes
-        } />
-      </div>
+      {loading ? (
+        <LoadingSpinner message="Cargando registros..." />
+      ) : error ? (
+        <ErrorMessage message={error} onRetry={loadTabContent} />
+      ) : (
+        <div style={card}>
+          <DataTable data={data} columns={
+            activeTab === 1 ? columnsAlimentacion : 
+            activeTab === 2 ? columnsRevision : 
+            columnsPesajes
+          } />
+        </div>
+      )}
 
       {/* Modal Alimentación */}
       {modal === 'alimentacion' && (

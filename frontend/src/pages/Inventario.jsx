@@ -6,6 +6,9 @@ import Modal from '../components/Modal.jsx'
 import ConfirmModal from '../components/ConfirmModal.jsx'
 import FormField, { inputStyle, btnPrimary, card } from '../components/FormField.jsx'
 import DataTable from '../components/DataTable.jsx'
+import LoadingSpinner from '../components/LoadingSpinner'
+import ErrorMessage from '../components/ErrorMessage'
+import ExportButton from '../components/ExportButton'
 
 const tabButtonStyle = (active) => ({
   padding: '0.75rem 1.5rem',
@@ -54,6 +57,8 @@ const badgeStyle = (estado) => {
 export default function Inventario() {
   const [items, setItems] = useState([])
   const [alertas, setAlertas] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [activeTab, setActiveTab] = useState(1) // 1: Alimentos/Suplementos, 2: Medicamentos, 3: Alertas
   const [modal, setModal] = useState(null)
   const [editItem, setEditItem] = useState(null)
@@ -65,12 +70,26 @@ export default function Inventario() {
 
   const [showStatusModal, setShowStatusModal] = useState(false)
 
-  const reload = () => {
-    getInventario().then((r) => setItems(r.data)).catch(() => {})
-    getAlertas(10).then((r) => setAlertas(r.data)).catch(() => {})
+  const reload = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const [rInv, rAle] = await Promise.all([
+        getInventario(),
+        getAlertas(10)
+      ])
+      setItems(rInv.data)
+      setAlertas(rAle.data)
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error al cargar inventario')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  useEffect(reload, [])
+  useEffect(() => {
+    reload()
+  }, [])
 
   const onCreateItem = async (data) => {
     try {
@@ -179,41 +198,52 @@ export default function Inventario() {
   return (
     <div>
       <PageHeader title="Inventario">
-        <button style={btnPrimary} onClick={() => setModal('nuevo')}>+ Nuevo item</button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <ExportButton data={filteredItems} filename={`Inventario_Tab${activeTab}`} />
+          <button style={btnPrimary} onClick={() => setModal('nuevo')}>+ Nuevo item</button>
+        </div>
       </PageHeader>
 
-      {/* Global Summary */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-        <div style={summaryCardStyle()}>
-          <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Disponibles</span>
-          <span style={{ fontSize: '1.5rem', fontWeight: 700 }}>{summary.disponibles}</span>
-        </div>
-        <div style={summaryCardStyle()}>
-          <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Agotados</span>
-          <span style={{ fontSize: '1.5rem', fontWeight: 700 }}>{summary.agotados}</span>
-        </div>
-        <div style={summaryCardStyle()}>
-          <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Descontinuados</span>
-          <span style={{ fontSize: '1.5rem', fontWeight: 700 }}>{summary.descontinuados}</span>
-        </div>
-        <div style={summaryCardStyle('#fee2e2', '#991b1b')}>
-          <span style={{ fontSize: '0.875rem' }}>⚠️ Bajo Stock ({"< 10"})</span>
-          <span style={{ fontSize: '1.5rem', fontWeight: 700 }}>{summary.bajoStock}</span>
-        </div>
-      </div>
+      {loading ? (
+        <LoadingSpinner message="Cargando inventario..." />
+      ) : error ? (
+        <ErrorMessage message={error} onRetry={reload} />
+      ) : (
+        <>
+          {/* Global Summary */}
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
+            <div style={summaryCardStyle()}>
+              <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Disponibles</span>
+              <span style={{ fontSize: '1.5rem', fontWeight: 700 }}>{summary.disponibles}</span>
+            </div>
+            <div style={summaryCardStyle()}>
+              <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Agotados</span>
+              <span style={{ fontSize: '1.5rem', fontWeight: 700 }}>{summary.agotados}</span>
+            </div>
+            <div style={summaryCardStyle()}>
+              <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Descontinuados</span>
+              <span style={{ fontSize: '1.5rem', fontWeight: 700 }}>{summary.descontinuados}</span>
+            </div>
+            <div style={summaryCardStyle('#fee2e2', '#991b1b')}>
+              <span style={{ fontSize: '0.875rem' }}>⚠️ Bajo Stock ({"< 10"})</span>
+              <span style={{ fontSize: '1.5rem', fontWeight: 700 }}>{summary.bajoStock}</span>
+            </div>
+          </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem' }}>
-        <button style={tabButtonStyle(activeTab === 1)} onClick={() => setActiveTab(1)}>Alimentos y Suplementos</button>
-        <button style={tabButtonStyle(activeTab === 2)} onClick={() => setActiveTab(2)}>Medicamentos</button>
-        <button style={tabButtonStyle(activeTab === 3)} onClick={() => setActiveTab(3)}>
-          ⚠️ Alertas de stock {alertas.length > 0 && <span style={{ background: '#dc2626', color: '#fff', padding: '1px 6px', borderRadius: '10px', fontSize: '0.7rem', marginLeft: '5px' }}>{alertas.length}</span>}
-        </button>
-      </div>
+          {/* Tabs */}
+          <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem' }}>
+            <button style={tabButtonStyle(activeTab === 1)} onClick={() => setActiveTab(1)}>Alimentos y Suplementos</button>
+            <button style={tabButtonStyle(activeTab === 2)} onClick={() => setActiveTab(2)}>Medicamentos</button>
+            <button style={tabButtonStyle(activeTab === 3)} onClick={() => setActiveTab(3)}>
+              ⚠️ Alertas de stock {alertas.length > 0 && <span style={{ background: '#dc2626', color: '#fff', padding: '1px 6px', borderRadius: '10px', fontSize: '0.7rem', marginLeft: '5px' }}>{alertas.length}</span>}
+            </button>
+          </div>
 
-      <div style={card}>
-        <DataTable data={filteredItems} columns={columns} />
-      </div>
+          <div style={card}>
+            <DataTable data={filteredItems} columns={columns} />
+          </div>
+        </>
+      )}
 
       {/* Modals */}
       {modal === 'nuevo' && (

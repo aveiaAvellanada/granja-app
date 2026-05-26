@@ -5,23 +5,45 @@ import PageHeader from '../components/PageHeader.jsx'
 import Modal from '../components/Modal.jsx'
 import FormField, { inputStyle, btnPrimary, card } from '../components/FormField.jsx'
 import DataTable from '../components/DataTable.jsx'
+import LoadingSpinner from '../components/LoadingSpinner'
+import ErrorMessage from '../components/ErrorMessage'
+import ExportButton from '../components/ExportButton'
 import ConfirmModal from '../components/ConfirmModal.jsx'
 
 export default function Empleados() {
   const [empleados, setEmpleados] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [confirmToggle, setConfirmToggle] = useState(null)
   const { register, handleSubmit, reset, formState: { errors } } = useForm()
 
+  const reloadData = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await getEmpleados()
+      setEmpleados(res.data)
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error al cargar empleados')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
-    getEmpleados().then((r) => setEmpleados(r.data)).catch(() => {})
+    reloadData()
   }, [])
 
   async function onSubmit(data) {
-    await createEmpleado(data)
-    reset()
-    setShowModal(false)
-    getEmpleados().then((r) => setEmpleados(r.data))
+    try {
+      await createEmpleado(data)
+      reset()
+      setShowModal(false)
+      reloadData()
+    } catch (err) {
+      // Form error handling could be here if needed
+    }
   }
 
   async function handleToggle() {
@@ -29,7 +51,7 @@ export default function Empleados() {
     const nuevoEstado = e.estado_empleado === 'Activo' ? 'Inactivo' : 'Activo'
     await updateEmpleado(e.id_empleado, { estado_empleado: nuevoEstado })
     setConfirmToggle(null)
-    getEmpleados().then((r) => setEmpleados(r.data))
+    reloadData()
   }
 
   const columns = useMemo(() => [
@@ -67,12 +89,21 @@ export default function Empleados() {
   return (
     <div>
       <PageHeader title="Empleados">
-        <button style={btnPrimary} onClick={() => setShowModal(true)}>+ Nuevo empleado</button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <ExportButton data={empleados} filename="Empleados" />
+          <button style={btnPrimary} onClick={() => setShowModal(true)}>+ Nuevo empleado</button>
+        </div>
       </PageHeader>
 
-      <div style={card}>
-        <DataTable data={empleados} columns={columns} />
-      </div>
+      {loading ? (
+        <LoadingSpinner message="Cargando personal..." />
+      ) : error ? (
+        <ErrorMessage message={error} onRetry={reloadData} />
+      ) : (
+        <div style={card}>
+          <DataTable data={empleados} columns={columns} />
+        </div>
+      )}
 
       {showModal && (
         <Modal title="Nuevo empleado" onClose={() => setShowModal(false)}>

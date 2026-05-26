@@ -11,6 +11,10 @@ import PageHeader from '../components/PageHeader.jsx'
 import DataTable from '../components/DataTable.jsx'
 import Modal from '../components/Modal.jsx'
 import FormField, { inputStyle, btnPrimary, card } from '../components/FormField.jsx'
+import LoadingSpinner from '../components/LoadingSpinner'
+import ErrorMessage from '../components/ErrorMessage'
+import ExportButton from '../components/ExportButton'
+import Breadcrumb from '../components/Breadcrumb'
 
 const tabButtonStyle = (active) => ({
   padding: '0.75rem 1.5rem',
@@ -37,7 +41,8 @@ const mongoBadge = {
 export default function Reportes() {
   const [activeTab, setActiveTab] = useState(1)
   const [data, setData] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [modal, setModal] = useState(null)
   const [jsonView, setJsonView] = useState(null)
   
@@ -49,6 +54,7 @@ export default function Reportes() {
 
   const reloadData = async () => {
     setLoading(true)
+    setError(null)
     try {
       let res
       if (activeTab === 1) res = await getReportesMensuales()
@@ -57,7 +63,7 @@ export default function Reportes() {
       else if (activeTab === 4) res = await getDashboardCache()
       setData(res.data)
     } catch (err) {
-      console.error(err)
+      setError(err.response?.data?.error || 'Error al cargar reportes')
     } finally {
       setLoading(false)
     }
@@ -69,12 +75,13 @@ export default function Reportes() {
 
   const onGenerarReporte = async (formData) => {
     setLoading(true)
+    setError(null)
     try {
       await generarReporteMes(formData)
       setModal(null)
       reloadData()
     } catch (err) {
-      console.error(err)
+      setError(err.response?.data?.error || 'Error al generar reporte')
     } finally {
       setLoading(false)
     }
@@ -136,14 +143,23 @@ export default function Reportes() {
     { header: 'Usuario', accessorKey: 'usuario' }
   ], [])
 
+  const breadcrumbItems = [
+    { label: 'Dashboard', path: '/dashboard' },
+    { label: 'Reportes', path: '/reportes' }
+  ]
+
   return (
     <div>
+      <Breadcrumb items={breadcrumbItems} />
       <PageHeader title="Módulo de Reportes">
-        {activeTab === 1 && (
-          <button style={btnPrimary} onClick={() => setModal('generar')}>
-            Generar reporte mes actual
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {(activeTab === 1 || activeTab === 2) && <ExportButton data={data} filename={activeTab === 1 ? 'Reportes_Mensuales' : 'Auditoria_Eventos'} />}
+          {activeTab === 1 && (
+            <button style={btnPrimary} onClick={() => setModal('generar')}>
+              Generar reporte mes actual
+            </button>
+          )}
+        </div>
       </PageHeader>
 
       <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem' }}>
@@ -210,7 +226,11 @@ export default function Reportes() {
         {activeTab === 4 && <h3 style={{ margin: 0 }}>Estado del Cache <span style={mongoBadge}>Fuente: MongoDB</span></h3>}
       </div>
 
-      {activeTab !== 4 ? (
+      {loading ? (
+        <LoadingSpinner message="Cargando datos de MongoDB..." />
+      ) : error ? (
+        <ErrorMessage message={error} onRetry={reloadData} />
+      ) : activeTab !== 4 ? (
         <div style={card}>
           <DataTable data={data} columns={activeTab === 1 ? columnsReportes : activeTab === 2 ? columnsAuditoria : columnsLogs} />
         </div>

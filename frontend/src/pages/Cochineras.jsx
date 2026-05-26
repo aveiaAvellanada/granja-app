@@ -9,12 +9,17 @@ import Modal from '../components/Modal.jsx'
 import FormField, { inputStyle, btnPrimary } from '../components/FormField.jsx'
 import DataTable from '../components/DataTable.jsx'
 import ConfirmModal from '../components/ConfirmModal.jsx'
+import LoadingSpinner from '../components/LoadingSpinner'
+import ErrorMessage from '../components/ErrorMessage'
+import Breadcrumb from '../components/Breadcrumb'
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts'
 
 export default function Cochineras() {
   const { user } = useAuth()
   const { id: urlId } = useParams()
   const [cochineras, setCochineras] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [searchFilter, setSearchFilter] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [confirmToggle, setConfirmToggle] = useState(null)
@@ -29,6 +34,8 @@ export default function Cochineras() {
   const { register, handleSubmit, reset } = useForm()
 
   const reload = async () => {
+    setLoading(true)
+    setError(null)
     try {
       const res = await getCochineras()
       setCochineras(res.data)
@@ -38,7 +45,9 @@ export default function Cochineras() {
         if (found) setSelectedCochinera(found)
       }
     } catch (err) {
-      console.error(err)
+      setError(err.response?.data?.error || 'Error al cargar cochineras')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -110,6 +119,17 @@ export default function Cochineras() {
   const oldest = cerdosData.length > 0 ? Math.max(...cerdosData.map(c => c.edad_dias || 0)) : 0
   const youngest = cerdosData.length > 0 ? Math.min(...cerdosData.map(c => c.edad_dias || 0)) : 0
 
+  if (loading) return <LoadingSpinner message="Cargando cochineras..." />
+  if (error) return <ErrorMessage message={error} onRetry={reload} />
+
+  const breadcrumbItems = [
+    { label: 'Dashboard', path: '/dashboard' },
+    { label: 'Cochineras', path: '/cochineras' }
+  ]
+  if (selectedCochinera) {
+    breadcrumbItems.push({ label: `Cochinera #${selectedCochinera.id_cochinera}`, path: `/cochineras/${selectedCochinera.id_cochinera}` })
+  }
+
   const columnsCerdos = useMemo(() => [
     { header: 'ID', accessorKey: 'id_cerdo', cell: info => `#${info.getValue()}` },
     { header: 'Sexo', accessorKey: 'sexo_cerdo' },
@@ -136,6 +156,7 @@ export default function Cochineras() {
 
   return (
     <div>
+      <Breadcrumb items={breadcrumbItems} />
       <style>{`
         .cochinera-card {
           background: #fff;

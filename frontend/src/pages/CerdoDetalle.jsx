@@ -20,6 +20,9 @@ import Modal from '../components/Modal.jsx'
 import FormField, { inputStyle, btnPrimary, btnDanger, card } from '../components/FormField.jsx'
 import ConfirmModal from '../components/ConfirmModal.jsx'
 import DataTable from '../components/DataTable.jsx'
+import LoadingSpinner from '../components/LoadingSpinner'
+import ErrorMessage from '../components/ErrorMessage'
+import Breadcrumb from '../components/Breadcrumb'
 
 const badgeStyle = (estado) => {
   let bg = '#f3f4f6'
@@ -54,6 +57,9 @@ export default function CerdoDetalle() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  
   const [historial, setHistorial] = useState([])
   const [venta, setVenta] = useState(null)
   const [mortalidad, setMortalidad] = useState(null)
@@ -73,6 +79,8 @@ export default function CerdoDetalle() {
   const muerteForm = useForm()
 
   const loadData = async () => {
+    setLoading(true)
+    setError(null)
     try {
       const [rCerdo, rPeso, rTraslados, rAlim, rRev, rPes, rCoch] = await Promise.all([
         getCerdo(id),
@@ -100,7 +108,9 @@ export default function CerdoDetalle() {
         setMortalidad(rMort.data)
       }
     } catch (err) {
-      console.error(err)
+      setError(err.response?.data?.error || 'Error al cargar ficha del cerdo')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -168,8 +178,16 @@ export default function CerdoDetalle() {
     { header: 'Observaciones', accessorKey: 'observaciones' }
   ], [])
 
-  if (!data) return <p style={{ padding: '2rem' }}>Cargando ficha del animal...</p>
+  if (loading) return <LoadingSpinner message="Cargando ficha del animal..." />
+  if (error) return <ErrorMessage message={error} onRetry={loadData} />
+  if (!data) return <p style={{ padding: '2rem' }}>No se encontró información del animal.</p>
+
   const { cerdo, genealogia } = data
+  const breadcrumbItems = [
+    { label: 'Dashboard', path: '/dashboard' },
+    { label: 'Cerdos', path: '/cerdos' },
+    { label: `Cerdo #${id}`, path: `/cerdos/${id}` }
+  ]
 
   const gdpPromedio = historial.length >= 2 
     ? (historial.reduce((acc, h) => acc + (parseFloat(h.gdp) || 0), 0) / (historial.length - 1)).toFixed(2)
@@ -177,6 +195,7 @@ export default function CerdoDetalle() {
 
   return (
     <div>
+      <Breadcrumb items={breadcrumbItems} />
       <PageHeader title={`Cerdo #${id}`}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <span style={badgeStyle(cerdo.estado_cerdo)}>{cerdo.estado_cerdo}</span>

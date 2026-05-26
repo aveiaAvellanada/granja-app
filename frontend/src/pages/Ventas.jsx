@@ -8,6 +8,9 @@ import Modal from '../components/Modal.jsx'
 import { btnPrimary, btnDanger, card } from '../components/FormField.jsx'
 import DataTable from '../components/DataTable.jsx'
 import ConfirmModal from '../components/ConfirmModal.jsx'
+import LoadingSpinner from '../components/LoadingSpinner'
+import ErrorMessage from '../components/ErrorMessage'
+import ExportButton from '../components/ExportButton'
 
 const formatMoneda = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(val)
 
@@ -20,6 +23,8 @@ const formatearFechaLarga = (fechaStr) => {
 export default function Ventas() {
   const { user } = useAuth()
   const [ventas, setVentas] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   
   // States for standard page modals
   const [detalleModal, setDetalleModal] = useState(null)
@@ -48,8 +53,17 @@ export default function Ventas() {
   const [successInvoice, setSuccessInvoice] = useState(null)
   const [confirmCloseModal, setConfirmCloseModal] = useState(false)
 
-  const reload = () => {
-    getVentas().then((r) => setVentas(Array.isArray(r.data) ? r.data : [])).catch(() => {})
+  const reload = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await getVentas()
+      setVentas(Array.isArray(res.data) ? res.data : [])
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error al cargar ventas')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -256,14 +270,23 @@ export default function Ventas() {
           #seccion-impresion { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; }
           .no-print { display: none !important; }
         }
-      `}</style>
+      </style>
       <PageHeader title="Ventas">
-        <button style={btnPrimary} onClick={() => setIsNewSaleOpen(true)}>+ Nueva venta</button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <ExportButton data={ventas} filename="Ventas" />
+          <button style={btnPrimary} onClick={() => setIsNewSaleOpen(true)}>+ Nueva venta</button>
+        </div>
       </PageHeader>
 
-      <div style={card}>
-        <DataTable data={ventas} columns={columns} />
-      </div>
+      {loading ? (
+        <LoadingSpinner message="Cargando ventas..." />
+      ) : error ? (
+        <ErrorMessage message={error} onRetry={reload} />
+      ) : (
+        <div style={card}>
+          <DataTable data={ventas} columns={columns} />
+        </div>
+      )}
 
       {isNewSaleOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

@@ -8,6 +8,9 @@ import PageHeader from '../components/PageHeader.jsx'
 import Modal from '../components/Modal.jsx'
 import FormField, { inputStyle, btnPrimary, card } from '../components/FormField.jsx'
 import DataTable from '../components/DataTable.jsx'
+import LoadingSpinner from '../components/LoadingSpinner'
+import ErrorMessage from '../components/ErrorMessage'
+import ExportButton from '../components/ExportButton'
 
 const tabButtonStyle = (active) => ({
   padding: '0.75rem 1.5rem',
@@ -24,26 +27,26 @@ export default function Cerdos() {
   const [activeTab, setActiveTab] = useState('Activo')
   const [data, setData] = useState([])
   const [counters, setCounters] = useState({ Activo: 0, Vendido: 0, Muerto: 0 })
-  
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [submitError, setSubmitError] = useState('')
+
   const [razas, setRazas] = useState([])
   const [cochineras, setCochineras] = useState([])
   const [allCerdos, setAllCerdos] = useState([]) // For parents dropdown
-  
+
   const [showModal, setShowModal] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
   const { register, handleSubmit, reset, formState: { errors } } = useForm()
 
   const reloadData = async () => {
     setLoading(true)
+    setError(null)
     try {
       // Fetch current tab data
       const res = await getCerdos(activeTab)
       setData(res.data)
-      
-      // Update counters (simple way: fetch all or use existing if we had them)
-      // For precision as requested, we need to know the counts. 
-      // Let's fetch the counts or at least the current one.
+
+      // Update counters
       setCounters(prev => ({ ...prev, [activeTab]: res.data.length }))
 
       // Load auxiliary data for modal if in 'Activo' tab
@@ -58,7 +61,7 @@ export default function Cerdos() {
         setAllCerdos(rAll.data)
       }
     } catch (err) {
-      console.error(err)
+      setError(err.response?.data?.error || 'Error al cargar inventario')
     } finally {
       setLoading(false)
     }
@@ -137,9 +140,12 @@ export default function Cerdos() {
   return (
     <div>
       <PageHeader title="Inventario de Cerdos">
-        {activeTab === 'Activo' && (
-          <button style={btnPrimary} onClick={() => { setError(''); setShowModal(true); }}>+ Registrar cerdo</button>
-        )}
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <ExportButton data={data} filename={`Cerdos_${activeTab}`} sheetName={activeTab} />
+          {activeTab === 'Activo' && (
+            <button style={btnPrimary} onClick={() => { setSubmitError(''); setShowModal(true); }}>+ Registrar cerdo</button>
+          )}
+        </div>
       </PageHeader>
 
       {/* Tabs */}
@@ -155,16 +161,22 @@ export default function Cerdos() {
         </button>
       </div>
 
-      <div style={card}>
-        <DataTable 
-          data={data} 
-          columns={
-            activeTab === 'Activo' ? columnsActivos :
-            activeTab === 'Vendido' ? columnsVendidos :
-            columnsMuertos
-          } 
-        />
-      </div>
+      {loading ? (
+        <LoadingSpinner message="Cargando cerdos..." />
+      ) : error ? (
+        <ErrorMessage message={error} onRetry={reloadData} />
+      ) : (
+        <div style={card}>
+          <DataTable 
+            data={data} 
+            columns={
+              activeTab === 'Activo' ? columnsActivos :
+              activeTab === 'Vendido' ? columnsVendidos :
+              columnsMuertos
+            } 
+          />
+        </div>
+      )}
 
       {showModal && (
         <Modal title="Registrar cerdo" onClose={() => setShowModal(false)}>

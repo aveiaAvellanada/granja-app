@@ -11,6 +11,8 @@ import Inventario from './pages/Inventario.jsx'
 import Registros from './pages/Registros.jsx'
 import Ventas from './pages/Ventas.jsx'
 import Reportes from './pages/Reportes.jsx'
+import Perfil from './pages/Perfil.jsx'
+import NotFound from './pages/NotFound.jsx'
 import Clientes from './pages/Clientes.jsx'
 
 function PrivateRoute({ children, requiredRole }) {
@@ -49,11 +51,13 @@ export default function App() {
             <Route path="pesajes" element={<Navigate to="/registros" replace />} />
             <Route path="ventas" element={<Ventas />} />
             <Route path="reportes" element={<PrivateRoute requiredRole="administrador"><Reportes /></PrivateRoute>} />
+            <Route path="perfil" element={<Perfil />} />
 
             <Route path="cochineras/:id?" element={<PrivateRoute requiredRole="administrador"><Cochineras /></PrivateRoute>} />
             <Route path="empleados" element={<PrivateRoute requiredRole="administrador"><Empleados /></PrivateRoute>} />
             <Route path="clientes" element={<PrivateRoute requiredRole="administrador"><Clientes /></PrivateRoute>} />
           </Route>
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

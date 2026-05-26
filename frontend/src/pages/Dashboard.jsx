@@ -7,6 +7,8 @@ import { getResumen, getAlertas, getVentasAnio } from '../api/dashboard.api.js'
 import { getPendientes } from '../api/veterinario.api.js'
 import { card } from '../components/FormField.jsx'
 import PageHeader from '../components/PageHeader.jsx'
+import LoadingSpinner from '../components/LoadingSpinner'
+import ErrorMessage from '../components/ErrorMessage'
 
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
@@ -16,22 +18,43 @@ export default function Dashboard() {
   const [alertas, setAlertas] = useState([])
   const [ventasData, setVentasData] = useState([])
   const [pendientesSalud, setPendientesSalud] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const anio = new Date().getFullYear()
 
-  useEffect(() => {
-    getResumen().then((r) => setResumen(r.data)).catch(() => {})
-    getAlertas().then((r) => setAlertas(Array.isArray(r.data) ? r.data : [])).catch(() => {})
-    getPendientes().then((r) => setPendientesSalud(Array.isArray(r.data) ? r.data.length : 0)).catch(() => {})
-    getVentasAnio(anio).then((r) => {
-      const rows = Array.isArray(r.data) ? r.data : []
+  const loadData = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const [rRes, rAle, rPen, rVen] = await Promise.all([
+        getResumen(),
+        getAlertas(),
+        getPendientes(),
+        getVentasAnio(anio)
+      ])
+      setResumen(rRes.data)
+      setAlertas(Array.isArray(rAle.data) ? rAle.data : [])
+      setPendientesSalud(Array.isArray(rPen.data) ? rPen.data.length : 0)
+      const rows = Array.isArray(rVen.data) ? rVen.data : []
       setVentasData(rows.map((x) => ({ ...x, mes: MESES[(x.mes ?? 1) - 1] })))
-    }).catch(() => {})
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error al cargar dashboard')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadData()
   }, [])
+
+  if (loading) return <LoadingSpinner message="Cargando resumen..." />
+  if (error) return <ErrorMessage message={error} onRetry={loadData} />
 
   return (
     <div>
       <PageHeader title={`Dashboard ${anio}`} />
-
+...
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
         <StatCard label="Cerdos activos" value={resumen?.total_cerdos ?? '—'} color="#2563eb" />
         <StatCard label="Cochineras" value={resumen?.cochineras?.length ?? '—'} color="#059669" />

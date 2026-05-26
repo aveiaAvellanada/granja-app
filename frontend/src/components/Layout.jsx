@@ -41,16 +41,30 @@ export default function Layout() {
             </NavLink>
           ))}
         </nav>
-        <div style={{ marginTop: 'auto', padding: '1rem' }}>
-          <div style={{ color: '#9ca3af', fontSize: '0.8rem', marginBottom: '0.5rem' }}>
-            {user?.nombre} ({user?.rol})
+        <div style={{ marginTop: 'auto', padding: '1rem', borderTop: '1px solid #374151' }}>
+          <div 
+            style={{ color: '#9ca3af', fontSize: '0.8rem', marginBottom: '1rem', cursor: 'pointer' }}
+            onClick={() => navigate('/perfil')}
+            onMouseOver={e => e.currentTarget.style.color = '#fff'}
+            onMouseOut={e => e.currentTarget.style.color = '#9ca3af'}
+          >
+            <div style={{ fontWeight: 600 }}>{user?.nombre}</div>
+            <div style={{ textTransform: 'capitalize' }}>({user?.rol})</div>
           </div>
           <button onClick={handleLogout} style={logoutBtn}>Cerrar sesión</button>
         </div>
       </aside>
-      <main style={{ flex: 1, padding: '2rem', overflow: 'auto' }}>
-        <Outlet />
-      </main>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <header style={headerStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer' }} onClick={() => navigate('/perfil')}>
+            <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#374151' }}>{user?.nombre}</span>
+            <div style={avatarStyle}>👤</div>
+          </div>
+        </header>
+        <main style={{ flex: 1, padding: '2rem', overflow: 'auto' }}>
+          <Outlet />
+        </main>
+      </div>
     </div>
   )
 }
@@ -61,6 +75,28 @@ const sidebarStyle = {
   display: 'flex',
   flexDirection: 'column',
   flexShrink: 0,
+}
+
+const headerStyle = {
+  height: '60px',
+  background: '#fff',
+  borderBottom: '1px solid #e5e7eb',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'flex-end',
+  padding: '0 2rem',
+}
+
+const avatarStyle = {
+  width: '32px',
+  height: '32px',
+  background: '#f3f4f6',
+  borderRadius: '50%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: '1rem',
+  border: '1px solid #d1d5db',
 }
 
 const linkStyle = {

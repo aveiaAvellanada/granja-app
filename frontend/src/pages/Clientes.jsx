@@ -5,23 +5,43 @@ import PageHeader from '../components/PageHeader.jsx'
 import Modal from '../components/Modal.jsx'
 import FormField, { inputStyle, btnPrimary, card } from '../components/FormField.jsx'
 import DataTable from '../components/DataTable.jsx'
+import LoadingSpinner from '../components/LoadingSpinner'
+import ErrorMessage from '../components/ErrorMessage'
+import ExportButton from '../components/ExportButton'
 import ConfirmModal from '../components/ConfirmModal.jsx'
 
 export default function Clientes() {
   const [clientes, setClientes] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [confirmToggle, setConfirmToggle] = useState(null)
   const { register, handleSubmit, reset, formState: { errors } } = useForm()
 
+  const reloadData = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await getClientes()
+      setClientes(res.data)
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error al cargar clientes')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
-    getClientes().then((r) => setClientes(r.data)).catch(() => {})
+    reloadData()
   }, [])
 
   async function onSubmit(data) {
-    await createCliente(data)
-    reset()
-    setShowModal(false)
-    getClientes().then((r) => setClientes(r.data))
+    try {
+      await createCliente(data)
+      reset()
+      setShowModal(false)
+      reloadData()
+    } catch (err) {}
   }
 
   async function handleToggle() {
@@ -29,7 +49,7 @@ export default function Clientes() {
     const nuevoEstado = c.estado_cliente === 'Activo' ? 'Inactivo' : 'Activo'
     await updateCliente(c.id_cliente, { estado_cliente: nuevoEstado })
     setConfirmToggle(null)
-    getClientes().then((r) => setClientes(r.data))
+    reloadData()
   }
 
   const columns = useMemo(() => [
@@ -67,12 +87,21 @@ export default function Clientes() {
   return (
     <div>
       <PageHeader title="Clientes">
-        <button style={btnPrimary} onClick={() => setShowModal(true)}>+ Registrar cliente</button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <ExportButton data={clientes} filename="Clientes" />
+          <button style={btnPrimary} onClick={() => setShowModal(true)}>+ Registrar cliente</button>
+        </div>
       </PageHeader>
 
-      <div style={card}>
-        <DataTable data={clientes} columns={columns} />
-      </div>
+      {loading ? (
+        <LoadingSpinner message="Cargando clientes..." />
+      ) : error ? (
+        <ErrorMessage message={error} onRetry={reloadData} />
+      ) : (
+        <div style={card}>
+          <DataTable data={clientes} columns={columns} />
+        </div>
+      )}
 
       {showModal && (
         <Modal title="Nuevo cliente" onClose={() => setShowModal(false)}>
