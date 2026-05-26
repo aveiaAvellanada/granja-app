@@ -58,8 +58,8 @@ export default function Cochineras() {
   }, [cochineras, searchFilter])
 
   const totalCochineras = cochineras.length
-  const totalAnimales = cochineras.reduce((acc, c) => acc + (c.ocupacion_actual || 0), 0)
-  const totalLibres = cochineras.reduce((acc, c) => acc + (c.espacios_libres || c.capacidad_max), 0)
+  const totalAnimales = cochineras.reduce((acc, c) => acc + Number(c.ocupacion_actual || 0), 0)
+  const totalLibres = cochineras.reduce((acc, c) => acc + Number(c.espacios_libres ?? c.capacidad_max), 0)
 
   // --- DRAWER STATS ---
   const machosCount = cerdosData.filter(c => c.sexo_cerdo === 'Macho').length
@@ -145,8 +145,8 @@ export default function Cochineras() {
       {/* GRID */}
       <div className="grid-container">
         {filteredCochineras.map(c => {
-          const cap = c.capacidad_max || 1
-          const ocu = c.ocupacion_actual || 0
+          const cap = Number(c.capacidad_max || 1)
+          const ocu = Number(c.ocupacion_actual || 0)
           const pct = ocu / cap
           const isRed = pct > 0.9 || c.estado_cochinera === 'Llena'
           const isYellow = pct >= 0.7 && !isRed
