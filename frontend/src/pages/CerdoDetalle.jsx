@@ -202,7 +202,7 @@ export default function CerdoDetalle() {
             <Detail label="Estado" value={<span style={badgeStyle(cerdo.estado_cerdo)}>{cerdo.estado_cerdo}</span>} />
             <Detail label="Cochinera Actual" value={
               cerdo.id_cochinera_actual 
-                ? <Link to={`/cochineras/${cerdo.id_cochinera_actual}`} style={{ color: '#2563eb', fontWeight: 600 }}>Cochinera #{cerdo.id_cochinera_actual}</Link>
+                ? `Cochinera #${cerdo.id_cochinera_actual}`
                 : <span style={{ color: '#9ca3af' }}>Sin asignar</span>
             } />
           </div>
