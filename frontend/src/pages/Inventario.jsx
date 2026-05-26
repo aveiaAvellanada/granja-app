@@ -197,7 +197,7 @@ export default function Inventario() {
           <span style={{ fontSize: '1.5rem', fontWeight: 700 }}>{summary.descontinuados}</span>
         </div>
         <div style={summaryCardStyle('#fee2e2', '#991b1b')}>
-          <span style={{ fontSize: '0.875rem' }}>⚠️ Bajo Stock (< 10)</span>
+          <span style={{ fontSize: '0.875rem' }}>⚠️ Bajo Stock ({"< 10"})</span>
           <span style={{ fontSize: '1.5rem', fontWeight: 700 }}>{summary.bajoStock}</span>
         </div>
       </div>
