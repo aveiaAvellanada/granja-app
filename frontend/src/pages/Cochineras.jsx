@@ -121,17 +121,6 @@ export default function Cochineras() {
   const oldest = ages.length > 0 ? Math.max(...ages) : 0
   const youngest = ages.length > 0 ? Math.min(...ages) : 0
 
-  if (loading) return <LoadingSpinner message="Cargando cochineras..." />
-  if (error) return <ErrorMessage message={error} onRetry={reload} />
-
-  const breadcrumbItems = [
-    { label: 'Dashboard', path: '/dashboard' },
-    { label: 'Cochineras', path: '/cochineras' }
-  ]
-  if (selectedCochinera) {
-    breadcrumbItems.push({ label: "Cochinera #" + (selectedCochinera.id_cochinera || ''), path: "/cochineras/" + (selectedCochinera.id_cochinera || '') })
-  }
-
   const columnsCerdos = useMemo(() => [
     { header: 'ID', accessorKey: 'id_cerdo', cell: info => "#" + (info.getValue() || '') },
     { header: 'Sexo', accessorKey: 'sexo_cerdo' },
@@ -155,6 +144,17 @@ export default function Cochineras() {
       )
     }
   ], [])
+
+  if (loading) return <LoadingSpinner message="Cargando cochineras..." />
+  if (error) return <ErrorMessage message={error} onRetry={reload} />
+
+  const breadcrumbItems = [
+    { label: 'Dashboard', path: '/dashboard' },
+    { label: 'Cochineras', path: '/cochineras' }
+  ]
+  if (selectedCochinera) {
+    breadcrumbItems.push({ label: "Cochinera #" + (selectedCochinera.id_cochinera || ''), path: "/cochineras/" + (selectedCochinera.id_cochinera || '') })
+  }
 
   return (
     <div>
