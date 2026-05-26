@@ -78,3 +78,133 @@ export async function getHistorialPeso(req, res, next) {
     next(err)
   }
 }
+
+export async function getVentaCerdo(req, res, next) {
+  try {
+    const { id } = req.params
+    const result = await pool.query(`
+      SELECT 
+        f.id_factura,
+        f.fecha_venta,
+        f.estado_factura,
+        df.precio_venta_cop,
+        (cl.p_nombre || ' ' || cl.p_apellido) AS cliente,
+        cl.cedula_cliente,
+        cl.telefono
+      FROM comercial.detalle_factura df
+      JOIN comercial.factura f ON f.id_factura = df.id_factura
+      JOIN comercial.cliente cl ON cl.id_cliente = f.id_cliente
+      WHERE df.id_cerdo = $1`,
+      [id]
+    )
+    res.json(result.rows[0] || null)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function getMortalidadCerdo(req, res, next) {
+  try {
+    const { id } = req.params
+    const result = await pool.query(
+      'SELECT fecha_deceso, causa_muerte, metodo_disposicion FROM infraestructura.mortalidad WHERE id_cerdo = $1',
+      [id]
+    )
+    res.json(result.rows[0] || null)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function getTrasladosCerdo(req, res, next) {
+  try {
+    const { id } = req.params
+    const result = await pool.query(`
+      SELECT 
+        ht.id_traslado,
+        ht.fecha_traslado,
+        ht.id_cochinera_origen,
+        ht.id_cochinera_destino,
+        ht.motivo
+      FROM infraestructura.historial_traslado ht
+      WHERE ht.id_cerdo = $1
+      ORDER BY ht.fecha_traslado DESC`,
+      [id]
+    )
+    res.json(result.rows)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function getAlimentacionCerdo(req, res, next) {
+  try {
+    const { id } = req.params
+    const result = await pool.query(`
+      SELECT 
+        r.fecha_registro,
+        (e.p_nombre || ' ' || e.p_apellido) AS empleado,
+        i.nombre_item AS alimento,
+        a.cantidad_consumida,
+        u.abreviatura AS unidad,
+        r.observaciones
+      FROM gestion.registro r
+      JOIN gestion.alimentacion a ON a.id_registro = r.id_registro
+      JOIN personal.empleado e ON e.id_empleado = r.id_empleado
+      JOIN gestion.inventario i ON i.id_item = a.id_item
+      JOIN gestion.unidad_medida_ref u ON u.id_unidad = a.id_unidad
+      WHERE r.id_cerdo = $1
+      ORDER BY r.fecha_registro DESC`,
+      [id]
+    )
+    res.json(result.rows)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function getRevisionesCerdo(req, res, next) {
+  try {
+    const { id } = req.params
+    const result = await pool.query(`
+      SELECT 
+        r.fecha_registro,
+        (e.p_nombre || ' ' || e.p_apellido) AS empleado,
+        rm.diagnostico,
+        i.nombre_item AS medicamento,
+        r.observaciones
+      FROM gestion.registro r
+      JOIN gestion.revision_medica rm ON rm.id_registro = r.id_registro
+      JOIN personal.empleado e ON e.id_empleado = r.id_empleado
+      LEFT JOIN gestion.inventario i 
+        ON i.id_item = rm.id_medicamento_aplicado
+      WHERE r.id_cerdo = $1
+      ORDER BY r.fecha_registro DESC`,
+      [id]
+    )
+    res.json(result.rows)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function getPesajesCerdo(req, res, next) {
+  try {
+    const { id } = req.params
+    const result = await pool.query(`
+      SELECT 
+        p.fecha_pesaje,
+        (e.p_nombre || ' ' || e.p_apellido) AS empleado,
+        p.peso_kg,
+        p.observaciones
+      FROM gestion.pesaje p
+      JOIN personal.empleado e ON e.id_empleado = p.id_empleado
+      WHERE p.id_cerdo = $1
+      ORDER BY p.fecha_pesaje DESC`,
+      [id]
+    )
+    res.json(result.rows)
+  } catch (err) {
+    next(err)
+  }
+}
