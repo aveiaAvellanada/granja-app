@@ -104,20 +104,22 @@ export default function Cochineras() {
   const totalLibres = cochineras.reduce((acc, c) => acc + Number(c.espacios_libres ?? c.capacidad_max), 0)
 
   // --- DRAWER STATS ---
-  const machosCount = cerdosData.filter(c => c.sexo_cerdo === 'Macho').length
-  const hembrasCount = cerdosData.filter(c => c.sexo_cerdo === 'Hembra').length
+  const machosCount = Array.isArray(cerdosData) ? cerdosData.filter(c => c.sexo_cerdo === 'Macho').length : 0
+  const hembrasCount = Array.isArray(cerdosData) ? cerdosData.filter(c => c.sexo_cerdo === 'Hembra').length : 0
   const pieData = [
     { name: 'Machos', value: machosCount },
     { name: 'Hembras', value: hembrasCount }
   ]
   const pieColors = ['#3b82f6', '#ec4899']
 
-  const avgWeight = cerdosData.length > 0 
-    ? (cerdosData.reduce((acc, c) => acc + (Number(c.ultimo_peso_kg) || 0), 0) / cerdosData.filter(c => c.ultimo_peso_kg).length || 0).toFixed(1)
+  const pigsWithWeight = Array.isArray(cerdosData) ? cerdosData.filter(c => c.ultimo_peso_kg) : []
+  const avgWeight = pigsWithWeight.length > 0 
+    ? (pigsWithWeight.reduce((acc, c) => acc + (Number(c.ultimo_peso_kg) || 0), 0) / pigsWithWeight.length).toFixed(1)
     : 0
 
-  const oldest = cerdosData.length > 0 ? Math.max(...cerdosData.map(c => c.edad_dias || 0)) : 0
-  const youngest = cerdosData.length > 0 ? Math.min(...cerdosData.map(c => c.edad_dias || 0)) : 0
+  const ages = Array.isArray(cerdosData) && cerdosData.length > 0 ? cerdosData.map(c => c.edad_dias || 0) : []
+  const oldest = ages.length > 0 ? Math.max(...ages) : 0
+  const youngest = ages.length > 0 ? Math.min(...ages) : 0
 
   if (loading) return <LoadingSpinner message="Cargando cochineras..." />
   if (error) return <ErrorMessage message={error} onRetry={reload} />
@@ -127,11 +129,11 @@ export default function Cochineras() {
     { label: 'Cochineras', path: '/cochineras' }
   ]
   if (selectedCochinera) {
-    breadcrumbItems.push({ label: `Cochinera #${selectedCochinera.id_cochinera}`, path: `/cochineras/${selectedCochinera.id_cochinera}` })
+    breadcrumbItems.push({ label: "Cochinera #" + (selectedCochinera.id_cochinera || ''), path: "/cochineras/" + (selectedCochinera.id_cochinera || '') })
   }
 
   const columnsCerdos = useMemo(() => [
-    { header: 'ID', accessorKey: 'id_cerdo', cell: info => `#${info.getValue()}` },
+    { header: 'ID', accessorKey: 'id_cerdo', cell: info => "#" + (info.getValue() || '') },
     { header: 'Sexo', accessorKey: 'sexo_cerdo' },
     { header: 'Raza', accessorKey: 'raza', cell: info => info.getValue() ?? '—' },
     { header: 'Edad (días)', accessorKey: 'edad_dias', cell: info => info.getValue() ?? '—' },
@@ -141,7 +143,7 @@ export default function Cochineras() {
       id: 'acciones',
       cell: info => (
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <Link to={`/cerdos/${info.row.original.id_cerdo}`} style={{ color: '#2563eb', fontWeight: 600, textDecoration: 'none', fontSize: '0.85rem' }}>Ficha</Link>
+          <Link to={"/cerdos/" + (info.row.original.id_cerdo || '')} style={{ color: '#2563eb', fontWeight: 600, textDecoration: 'none', fontSize: '0.85rem' }}>Ficha</Link>
           <button 
             onClick={() => setTransferPig(info.row.original)}
             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: '#6366f1' }}
@@ -194,9 +196,9 @@ export default function Cochineras() {
       {/* GLOBAL STATS & SEARCH */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '1rem 1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.95rem', color: '#4b5563' }}>
-          <div><strong>{totalCochineras}</strong> cochineras</div>
-          <div style={{ borderLeft: '1px solid #d1d5db', paddingLeft: '1.5rem' }}><strong>{totalAnimales}</strong> animales en total</div>
-          <div style={{ borderLeft: '1px solid #d1d5db', paddingLeft: '1.5rem' }}><strong>{totalLibres}</strong> espacios libres</div>
+          <div><strong>{Array.isArray(cochineras) ? cochineras.length : 0}</strong> cochineras</div>
+          <div style={{ borderLeft: '1px solid #d1d5db', paddingLeft: '1.5rem' }}><strong>{Array.isArray(cochineras) ? cochineras.reduce((acc, c) => acc + Number(c.ocupacion_actual || 0), 0) : 0}</strong> animales en total</div>
+          <div style={{ borderLeft: '1px solid #d1d5db', paddingLeft: '1.5rem' }}><strong>{Array.isArray(cochineras) ? cochineras.reduce((acc, c) => acc + Number(c.espacios_libres ?? c.capacidad_max), 0) : 0}</strong> espacios libres</div>
         </div>
         <input 
           type="text" 
@@ -209,7 +211,7 @@ export default function Cochineras() {
 
       {/* GRID */}
       <div className="grid-container">
-        {filteredCochineras.map(c => {
+        {Array.isArray(filteredCochineras) && filteredCochineras.map(c => {
           const cap = Number(c.capacidad_max || 1)
           const ocu = Number(c.ocupacion_actual || 0)
           const pct = ocu / cap
@@ -232,7 +234,7 @@ export default function Cochineras() {
               <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.25rem', color: '#111827' }}>Cochinera #{c.id_cochinera}</h3>
               
               <div className="progress-bar-bg">
-                <div className="progress-bar-fill" style={{ width: `${Math.min(pct * 100, 100)}%`, background: barColor }} />
+                <div className="progress-bar-fill" style={{ width: (Math.min(pct * 100, 100) || 0) + "%", background: barColor }} />
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#6b7280', marginBottom: '1rem' }}>
@@ -249,7 +251,7 @@ export default function Cochineras() {
             </div>
           )
         })}
-        {filteredCochineras.length === 0 && (
+        {(!Array.isArray(filteredCochineras) || filteredCochineras.length === 0) && (
           <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#6b7280', padding: '2rem' }}>No se encontraron cochineras.</p>
         )}
       </div>
@@ -294,7 +296,7 @@ export default function Cochineras() {
                 </select>
               </div>
 
-              {cerdosData.length > 0 ? (
+              {Array.isArray(cerdosData) && cerdosData.length > 0 ? (
                 <>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem', marginBottom: '2rem' }}>
                     <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -360,7 +362,7 @@ export default function Cochineras() {
 
       {/* TRANSFER MODAL */}
       {transferPig && (
-        <Modal title={`Trasladar Cerdo #${transferPig.id_cerdo}`} onClose={() => setTransferPig(null)}>
+        <Modal title={"Trasladar Cerdo #" + (transferPig.id_cerdo || '')} onClose={() => setTransferPig(null)}>
           <form onSubmit={transferForm.handleSubmit(onTrasladarSubmit)}>
             <div style={{ marginBottom: '1rem', padding: '1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
               <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>Cochinera actual:</p>
@@ -369,7 +371,7 @@ export default function Cochineras() {
             <FormField label="Cochinera destino">
               <select style={inputStyle} {...transferForm.register('id_cochinera_destino', { required: true })}>
                 <option value="">Seleccione destino...</option>
-                {cochineras
+                {Array.isArray(cochineras) && cochineras
                   .filter(c => c.estado_cochinera !== 'En Mantenimiento' && c.espacios_libres > 0 && c.id_cochinera !== selectedCochinera?.id_cochinera)
                   .map(c => (
                     <option key={c.id_cochinera} value={c.id_cochinera}>
@@ -390,7 +392,7 @@ export default function Cochineras() {
       <ConfirmModal
         isOpen={!!confirmToggle}
         title="Cambiar estado"
-        message={"¿Seguro que deseas cambiar el estado de la cochinera #" + selectedCochinera?.id_cochinera + " a \"" + confirmToggle?.estado + "\"?"}
+        message={"¿Seguro que deseas cambiar el estado de la cochinera #" + (selectedCochinera?.id_cochinera || '') + " a \"" + (confirmToggle?.estado || '') + "\"?"}
         confirmColor="blue"
         onConfirm={handleToggle}
         onCancel={() => setConfirmToggle(null)}
@@ -399,7 +401,7 @@ export default function Cochineras() {
       <ConfirmModal
         isOpen={!!confirmTransfer}
         title="Confirmar traslado"
-        message={"¿Trasladar cerdo #" + transferPig?.id_cerdo + " de Cochinera #" + selectedCochinera?.id_cochinera + " a Cochinera #" + confirmTransfer?.id_cochinera_destino + "?"}
+        message={"¿Trasladar cerdo #" + (transferPig?.id_cerdo || '') + " de Cochinera #" + (selectedCochinera?.id_cochinera || '') + " a Cochinera #" + (confirmTransfer?.id_cochinera_destino || '') + "?"}
         confirmColor="blue"
         onConfirm={execTraslado}
         onCancel={() => setConfirmTransfer(null)}

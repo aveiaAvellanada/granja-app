@@ -232,20 +232,24 @@ export default function Reportes() {
         <ErrorMessage message={error} onRetry={reloadData} />
       ) : activeTab !== 4 ? (
         <div style={card}>
-          <DataTable data={data} columns={activeTab === 1 ? columnsReportes : activeTab === 2 ? columnsAuditoria : columnsLogs} />
+          <DataTable data={Array.isArray(data) ? data : []} columns={activeTab === 1 ? columnsReportes : activeTab === 2 ? columnsAuditoria : columnsLogs} />
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
-          {data.map((c, i) => (
+          {Array.isArray(data) && data.length > 0 ? data.map((c, i) => (
             <div key={i} style={card}>
-              <h4 style={{ marginTop: 0, color: '#2563eb' }}>{c.tipo_cache.replace(/_/g, ' ').toUpperCase()}</h4>
-              <p style={{ fontSize: '0.85rem' }}><strong>Último cache:</strong> {new Date(c.fecha_actualizacion).toLocaleString()}</p>
+              <h4 style={{ marginTop: 0, color: '#2563eb' }}>{(c.tipo_cache || 'Cache Desconocido').replace(/_/g, ' ').toUpperCase()}</h4>
+              <p style={{ fontSize: '0.85rem' }}><strong>Último cache:</strong> {c.fecha_actualizacion ? new Date(c.fecha_actualizacion).toLocaleString() : 'Nunca'}</p>
               <p style={{ fontSize: '0.85rem' }}><strong>TTL:</strong> {c.tipo_cache === 'ventas_mensuales' ? '24 horas' : '1 hora'}</p>
               {c.tipo_cache === 'ventas_mensuales' && <p style={{ fontSize: '0.85rem' }}><strong>Año:</strong> {c.anio}</p>}
               {c.tipo_cache !== 'ventas_mensuales' && <p style={{ fontSize: '0.85rem' }}><strong>Items:</strong> {Array.isArray(c.datos) ? c.datos.length : 'N/A'}</p>}
               <button style={{ ...btnPrimary, width: '100%', marginTop: '1rem' }} onClick={() => setJsonView(c.datos)}>Ver datos</button>
             </div>
-          ))}
+          )) : (
+            <p style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
+              No hay datos de cache disponibles en MongoDB Atlas.
+            </p>
+          )}
         </div>
       )}
 
