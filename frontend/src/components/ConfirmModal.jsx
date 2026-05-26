@@ -59,9 +59,11 @@ const overlay = {
   WebkitBackdropFilter: 'blur(8px)',
   zIndex: 9999,
   display: 'flex',
-  alignItems: 'center',
   justifyContent: 'center',
   padding: '1rem',
+  alignItems: 'flex-start',
+  paddingTop: '12px',
+  overflowY: 'auto',
   animation: 'overlayIn 180ms cubic-bezier(0.22,1,0.36,1)',
 }
 
