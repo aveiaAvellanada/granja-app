@@ -270,7 +270,7 @@ export default function Ventas() {
           #seccion-impresion { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; }
           .no-print { display: none !important; }
         }
-      </style>
+      `}</style>
       <PageHeader title="Ventas">
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <ExportButton data={ventas} filename="Ventas" />
