@@ -56,16 +56,16 @@ export default function Dashboard() {
       <PageHeader title={`Dashboard ${anio}`} />
 ...
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-        <StatCard label="Cerdos activos" value={resumen?.total_cerdos ?? '—'} color="#2563eb" />
-        <StatCard label="Cochineras" value={resumen?.cochineras?.length ?? '—'} color="#059669" />
+        <StatCard label="Cerdos activos" value={resumen?.total_cerdos ?? '—'} color="#4A7C35" />
+        <StatCard label="Cochineras" value={resumen?.cochineras?.length ?? '—'} color="#4A7C35" />
         <div onClick={() => navigate('/registros', { state: { tab: 2 } })} style={{ cursor: 'pointer' }}>
-          <StatCard 
-            label="Pendientes Salud (>30d)" 
-            value={pendientesSalud} 
-            color={pendientesSalud > 0 ? '#dc2626' : '#059669'} 
+          <StatCard
+            label="Pendientes Salud (>30d)"
+            value={pendientesSalud}
+            color={pendientesSalud > 0 ? '#B5341F' : '#4A7C35'}
           />
         </div>
-        <StatCard label="Otras Alertas" value={alertas.length} color={alertas.length > 0 ? '#dc2626' : '#6b7280'} />
+        <StatCard label="Otras Alertas" value={alertas.length} color={alertas.length > 0 ? '#C97A1A' : '#9A9282'} />
       </div>
 
       {ventasData.length > 0 && (
@@ -78,8 +78,8 @@ export default function Dashboard() {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="total_ingresos" name="Total ingresos ($)" fill="#2563eb" />
-              <Bar dataKey="cantidad_cerdos" name="Cerdos vendidos" fill="#10b981" />
+              <Bar dataKey="total_ingresos" name="Total ingresos ($)" fill="#4A7C35" />
+              <Bar dataKey="cantidad_cerdos" name="Cerdos vendidos" fill="#C97A1A" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -99,7 +99,7 @@ export default function Dashboard() {
             <tbody>
               {alertas.map((a, i) => (
                 <tr key={i}>
-                  <td><span style={{ background: '#fef3c7', color: '#92400e', borderRadius: 4, padding: '2px 8px', fontSize: '0.8rem' }}>{a.tipo_alerta}</span></td>
+                  <td><span style={{ background: '#FEF3E2', color: '#C97A1A', borderRadius: 6, padding: '2px 10px', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.04em' }}>{a.tipo_alerta}</span></td>
                   <td style={{ fontWeight: 600, color: '#374151' }}>{a.referencia ?? '—'}</td>
                   <td>{a.descripcion ?? JSON.stringify(a)}</td>
                 </tr>
@@ -114,9 +114,22 @@ export default function Dashboard() {
 
 function StatCard({ label, value, color }) {
   return (
-    <div style={{ ...card, textAlign: 'center', margin: 0 }}>
-      <div style={{ fontSize: '2rem', fontWeight: 800, color }}>{value}</div>
-      <div style={{ color: '#6b7280', fontSize: '0.85rem', marginTop: '0.25rem' }}>{label}</div>
+    <div style={{
+      background: '#FFFFFF',
+      borderRadius: 12,
+      padding: '1.25rem 1.5rem',
+      boxShadow: '0 2px 10px rgba(26,46,26,0.07), 0 0 0 1px rgba(26,46,26,0.04)',
+      border: '1px solid #EDE8DF',
+      textAlign: 'center',
+    }}>
+      <div style={{
+        fontSize: '2.1rem',
+        fontWeight: 900,
+        color,
+        fontFamily: "'Fraunces', Georgia, serif",
+        lineHeight: 1.1,
+      }}>{value}</div>
+      <div style={{ color: '#9A9282', fontSize: '0.8rem', marginTop: '0.4rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
     </div>
   )
 }

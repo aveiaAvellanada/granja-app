@@ -1,37 +1,36 @@
-import React from 'react';
+export default function LoadingSpinner({ size = 'md', message = 'Cargando...' }) {
+  const dim = size === 'sm' ? 24 : size === 'lg' ? 56 : 40
 
-const spinnerStyle = {
+  return (
+    <div style={wrapStyle}>
+      <div style={{
+        width: dim,
+        height: dim,
+        border: `3px solid #EDE8DF`,
+        borderTop: `3px solid #4A7C35`,
+        borderRadius: '50%',
+        animation: 'spin 0.8s linear infinite',
+      }} />
+      {message && (
+        <p style={messageStyle}>{message}</p>
+      )}
+    </div>
+  )
+}
+
+const wrapStyle = {
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
   padding: '3rem',
-  width: '100%',
-};
+  gap: '0.75rem',
+}
 
-const circleStyle = (size) => {
-  const dimensions = size === 'sm' ? '24px' : size === 'lg' ? '64px' : '40px';
-  return {
-    width: dimensions,
-    height: dimensions,
-    border: '4px solid #e5e7eb',
-    borderTop: '4px solid #2563eb',
-    borderRadius: '50%',
-    animation: 'spin 1s linear infinite',
-  };
-};
-
-export default function LoadingSpinner({ size = 'md', message = 'Cargando...' }) {
-  return (
-    <div style={spinnerStyle}>
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
-      <div style={circleStyle(size)}></div>
-      {message && <p style={{ marginTop: '1rem', color: '#6b7280', fontWeight: 500 }}>{message}</p>}
-    </div>
-  );
+const messageStyle = {
+  margin: 0,
+  color: '#9A9282',
+  fontSize: '0.875rem',
+  fontWeight: 500,
+  fontFamily: "'Cabin', system-ui, sans-serif",
 }
