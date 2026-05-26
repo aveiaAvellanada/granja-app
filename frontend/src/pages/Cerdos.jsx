@@ -180,6 +180,7 @@ export default function Cerdos() {
         </div>
       )}
 
+      {showModal && (
         <Modal title="Registrar cerdo" onClose={() => setShowModal(false)} maxWidth={700}>
           <form onSubmit={handleSubmit(onSubmit)}>
             <div className="grid-2-col">
@@ -255,6 +256,7 @@ export default function Cerdos() {
             <button type="submit" className="btn btn-primary btn-block" style={{ marginTop: '1.5rem' }}>Registrar ejemplar</button>
           </form>
         </Modal>
+      )}
     </div>
   )
 }
