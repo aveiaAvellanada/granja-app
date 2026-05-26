@@ -42,10 +42,12 @@ const overlay = {
   backdropFilter: 'blur(8px)',
   WebkitBackdropFilter: 'blur(8px)',
   display: 'flex',
-  alignItems: 'center',
   justifyContent: 'center',
   zIndex: 100,
   padding: '1rem',
+  alignItems: 'flex-start',
+  paddingTop: '24px',
+  overflowY: 'auto',
   animation: 'overlayIn 180ms cubic-bezier(0.22,1,0.36,1)',
 }
 
