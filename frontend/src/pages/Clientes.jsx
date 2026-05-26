@@ -129,8 +129,8 @@ export default function Clientes() {
         title={confirmToggle?.estado_cliente === 'Activo' ? 'Desactivar cliente' : 'Activar cliente'}
         message={
           confirmToggle?.estado_cliente === 'Activo'
-            ? `¿Seguro que deseas desactivar a ${confirmToggle?.p_nombre} ${confirmToggle?.p_apellido}? No podrá ser seleccionado en nuevas ventas.`
-            : `¿Seguro que deseas activar a ${confirmToggle?.p_nombre} ${confirmToggle?.p_apellido}?`
+            ? ("¿Seguro que deseas desactivar a " + confirmToggle?.p_nombre + " " + confirmToggle?.p_apellido + "? No podrá ser seleccionado en nuevas ventas.")
+            : ("¿Seguro que deseas activar a " + confirmToggle?.p_nombre + " " + confirmToggle?.p_apellido + "?")
         }
         confirmColor={confirmToggle?.estado_cliente === 'Activo' ? 'red' : 'blue'}
         onConfirm={handleToggle}

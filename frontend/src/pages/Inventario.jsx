@@ -324,7 +324,7 @@ export default function Inventario() {
       <ConfirmModal 
         isOpen={showConfirm}
         title="Confirmar actualización"
-        message={`¿Confirmas actualizar el stock de ${editItem?.nombre_item} de ${editItem?.cantidad_stock} a ${pendingStockUpdate} ${editItem?.abreviatura}?`}
+        message={"¿Confirmas actualizar el stock de " + editItem?.nombre_item + " de " + editItem?.cantidad_stock + " a " + pendingStockUpdate + " " + editItem?.abreviatura + "?"}
         onConfirm={confirmStockUpdate}
         onCancel={() => setShowConfirm(false)}
       />

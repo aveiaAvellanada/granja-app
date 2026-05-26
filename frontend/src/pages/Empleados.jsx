@@ -131,8 +131,8 @@ export default function Empleados() {
         title={confirmToggle?.estado_empleado === 'Activo' ? 'Desactivar empleado' : 'Activar empleado'}
         message={
           confirmToggle?.estado_empleado === 'Activo'
-            ? `¿Seguro que deseas desactivar a ${confirmToggle?.p_nombre} ${confirmToggle?.p_apellido}? El empleado perderá acceso al sistema.`
-            : `¿Seguro que deseas activar a ${confirmToggle?.p_nombre} ${confirmToggle?.p_apellido}?`
+            ? ("¿Seguro que deseas desactivar a " + confirmToggle?.p_nombre + " " + confirmToggle?.p_apellido + "? El empleado perderá acceso al sistema.")
+            : ("¿Seguro que deseas activar a " + confirmToggle?.p_nombre + " " + confirmToggle?.p_apellido + "?")
         }
         confirmColor={confirmToggle?.estado_empleado === 'Activo' ? 'red' : 'blue'}
         onConfirm={handleToggle}

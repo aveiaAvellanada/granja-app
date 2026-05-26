@@ -668,7 +668,7 @@ export default function Ventas() {
       <ConfirmModal
         isOpen={!!confirmAnularId}
         title="Anular factura"
-        message={`¿Seguro que deseas anular la factura #${confirmAnularId}? Los cerdos vendidos volverán a estado Activo y la factura quedará marcada como Anulada.`}
+        message={"¿Seguro que deseas anular la factura #" + confirmAnularId + "? Los cerdos vendidos volverán a estado Activo y la factura quedará marcada como Anulada."}
         confirmColor="red"
         onConfirm={handleAnular}
         onCancel={() => setConfirmAnularId(null)}

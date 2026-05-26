@@ -396,8 +396,8 @@ export default function CerdoDetalle() {
         title={confirmAction?.type === 'trasladar' ? 'Confirmar traslado' : 'Registrar muerte'}
         message={
           confirmAction?.type === 'trasladar'
-            ? `¿Trasladar cerdo #${id} de ${cerdo.id_cochinera_actual ? `Cochinera #${cerdo.id_cochinera_actual}` : 'sin asignar'} a Cochinera #${confirmAction.values.id_cochinera_destino}?`
-            : `¿Confirmas que el cerdo #${id} ha fallecido? Esta acción es irreversible y cambiará su estado a Muerto permanentemente.`
+            ? ("¿Trasladar cerdo #" + id + " de " + (cerdo.id_cochinera_actual ? ("Cochinera #" + cerdo.id_cochinera_actual) : 'sin asignar') + " a Cochinera #" + confirmAction.values.id_cochinera_destino + "?")
+            : ("¿Confirmas que el cerdo #" + id + " ha fallecido? Esta acción es irreversible y cambiará su estado a Muerto permanentemente.")
         }
         confirmColor={confirmAction?.type === 'trasladar' ? 'blue' : 'red'}
         onConfirm={confirmAction?.type === 'trasladar' ? onTrasladar : onMuerte}

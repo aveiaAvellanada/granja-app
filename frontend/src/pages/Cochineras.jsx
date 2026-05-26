@@ -390,7 +390,7 @@ export default function Cochineras() {
       <ConfirmModal
         isOpen={!!confirmToggle}
         title="Cambiar estado"
-        message={`¿Seguro que deseas cambiar el estado de la cochinera #${selectedCochinera?.id_cochinera} a "${confirmToggle?.estado}"?`}
+        message={"¿Seguro que deseas cambiar el estado de la cochinera #" + selectedCochinera?.id_cochinera + " a \"" + confirmToggle?.estado + "\"?"}
         confirmColor="blue"
         onConfirm={handleToggle}
         onCancel={() => setConfirmToggle(null)}
@@ -399,7 +399,7 @@ export default function Cochineras() {
       <ConfirmModal
         isOpen={!!confirmTransfer}
         title="Confirmar traslado"
-        message={`¿Trasladar cerdo #${transferPig?.id_cerdo} de Cochinera #${selectedCochinera?.id_cochinera} a Cochinera #${confirmTransfer?.id_cochinera_destino}?`}
+        message={"¿Trasladar cerdo #" + transferPig?.id_cerdo + " de Cochinera #" + selectedCochinera?.id_cochinera + " a Cochinera #" + confirmTransfer?.id_cochinera_destino + "?"}
         confirmColor="blue"
         onConfirm={execTraslado}
         onCancel={() => setConfirmTransfer(null)}
