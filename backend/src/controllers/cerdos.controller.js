@@ -2,7 +2,52 @@ import pool from '../config/db.postgres.js'
 
 export async function getCerdos(req, res, next) {
   try {
-    const result = await pool.query('SELECT * FROM infraestructura.vw_cerdos_activos ORDER BY id_cerdo DESC')
+    const { estado = 'Activo' } = req.query
+    let query = ''
+    
+    if (estado === 'Activo') {
+      query = 'SELECT * FROM infraestructura.vw_cerdos_activos ORDER BY id_cerdo DESC'
+    } else if (estado === 'Vendido') {
+      query = `
+        SELECT 
+          c.id_cerdo,
+          c.sexo_cerdo,
+          r.descripcion AS raza,
+          c.fecha_nacimiento,
+          (CURRENT_DATE - c.fecha_nacimiento) AS edad_dias,
+          c.estado_cerdo,
+          df.precio_venta_cop,
+          f.fecha_venta,
+          (cl.p_nombre || ' ' || cl.p_apellido) AS cliente
+        FROM infraestructura.cerdo c
+        JOIN infraestructura.raza_ref r ON r.id_raza = c.id_raza
+        LEFT JOIN comercial.detalle_factura df ON df.id_cerdo = c.id_cerdo
+        LEFT JOIN comercial.factura f ON f.id_factura = df.id_factura
+        LEFT JOIN comercial.cliente cl ON cl.id_cliente = f.id_cliente
+        WHERE c.estado_cerdo = 'Vendido'
+        ORDER BY f.fecha_venta DESC`
+    } else if (estado === 'Muerto') {
+      query = `
+        SELECT 
+          c.id_cerdo,
+          c.sexo_cerdo,
+          r.descripcion AS raza,
+          c.fecha_nacimiento,
+          (CURRENT_DATE - c.fecha_nacimiento) AS edad_dias,
+          c.estado_cerdo,
+          m.fecha_deceso,
+          m.causa_muerte,
+          m.metodo_disposicion
+        FROM infraestructura.cerdo c
+        JOIN infraestructura.raza_ref r ON r.id_raza = c.id_raza
+        LEFT JOIN infraestructura.mortalidad m ON m.id_cerdo = c.id_cerdo
+        WHERE c.estado_cerdo = 'Muerto'
+        ORDER BY m.fecha_deceso DESC`
+    } else {
+      return res.status(400).json({ error: 'Estado no válido' })
+    }
+
+    const result = await pool.query(query)
     res.json(result.rows)
   } catch (err) {
     next(err)

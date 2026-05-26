@@ -9,36 +9,67 @@ import Modal from '../components/Modal.jsx'
 import FormField, { inputStyle, btnPrimary, card } from '../components/FormField.jsx'
 import DataTable from '../components/DataTable.jsx'
 
+const tabButtonStyle = (active) => ({
+  padding: '0.75rem 1.5rem',
+  cursor: 'pointer',
+  border: 'none',
+  background: active ? '#fff' : 'transparent',
+  borderBottom: active ? '3px solid #2563eb' : '3px solid transparent',
+  fontWeight: active ? '700' : '500',
+  color: active ? '#2563eb' : '#6b7280',
+  transition: 'all 0.2s'
+})
+
 export default function Cerdos() {
-  const [cerdos, setCerdos] = useState([])
+  const [activeTab, setActiveTab] = useState('Activo')
+  const [data, setData] = useState([])
+  const [counters, setCounters] = useState({ Activo: 0, Vendido: 0, Muerto: 0 })
+  
   const [razas, setRazas] = useState([])
   const [cochineras, setCochineras] = useState([])
+  const [allCerdos, setAllCerdos] = useState([]) // For parents dropdown
+  
   const [showModal, setShowModal] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const { register, handleSubmit, reset, formState: { errors } } = useForm()
 
   const reloadData = async () => {
+    setLoading(true)
     try {
-      const [rCerdos, rRazas, rCochineras] = await Promise.all([
-        getCerdos(),
-        getRazas(),
-        getCochineras()
-      ])
-      setCerdos(rCerdos.data)
-      setRazas(rRazas.data)
-      setCochineras(rCochineras.data)
+      // Fetch current tab data
+      const res = await getCerdos(activeTab)
+      setData(res.data)
+      
+      // Update counters (simple way: fetch all or use existing if we had them)
+      // For precision as requested, we need to know the counts. 
+      // Let's fetch the counts or at least the current one.
+      setCounters(prev => ({ ...prev, [activeTab]: res.data.length }))
+
+      // Load auxiliary data for modal if in 'Activo' tab
+      if (activeTab === 'Activo') {
+        const [rRazas, rCochineras, rAll] = await Promise.all([
+          getRazas(),
+          getCochineras(),
+          getCerdos('Activo') // We reuse this for parents
+        ])
+        setRazas(rRazas.data)
+        setCochineras(rCochineras.data)
+        setAllCerdos(rAll.data)
+      }
     } catch (err) {
       console.error(err)
+    } finally {
+      setLoading(false)
     }
   }
 
   useEffect(() => {
     reloadData()
-  }, [])
+  }, [activeTab])
 
   async function onSubmit(data) {
     try {
-      // Convert optional strings to null if empty
       const payload = {
         ...data,
         id_padre: data.id_padre || null,
@@ -53,7 +84,9 @@ export default function Cerdos() {
     }
   }
 
-  const columns = useMemo(() => [
+  // --- COLUMNS ---
+
+  const columnsActivos = useMemo(() => [
     { header: 'ID', accessorKey: 'id_cerdo' },
     { header: 'Sexo', accessorKey: 'sexo_cerdo' },
     { header: 'Raza', accessorKey: 'raza', cell: info => info.getValue() ?? '—' },
@@ -67,14 +100,70 @@ export default function Cerdos() {
     }
   ], [])
 
+  const columnsVendidos = useMemo(() => [
+    { header: 'ID', accessorKey: 'id_cerdo' },
+    { header: 'Sexo', accessorKey: 'sexo_cerdo' },
+    { header: 'Raza', accessorKey: 'raza' },
+    { header: 'Edad', accessorKey: 'edad_dias', cell: info => `${info.getValue()} días` },
+    { header: 'Fecha Venta', accessorFn: row => new Date(row.fecha_venta).toLocaleDateString() },
+    { header: 'Cliente', accessorKey: 'cliente' },
+    { 
+      header: 'Precio COP', 
+      accessorKey: 'precio_venta_cop',
+      cell: info => info.getValue() ? `$ ${parseFloat(info.getValue()).toLocaleString('es-CO')}` : '—'
+    },
+    {
+      header: 'Acciones',
+      id: 'acciones',
+      cell: info => <Link to={`/cerdos/${info.row.original.id_cerdo}`} style={{ color: '#2563eb', fontWeight: 600 }}>Ver</Link>
+    }
+  ], [])
+
+  const columnsMuertos = useMemo(() => [
+    { header: 'ID', accessorKey: 'id_cerdo' },
+    { header: 'Sexo', accessorKey: 'sexo_cerdo' },
+    { header: 'Raza', accessorKey: 'raza' },
+    { header: 'Edad', accessorKey: 'edad_dias', cell: info => `${info.getValue()} días` },
+    { header: 'Fecha Deceso', accessorFn: row => new Date(row.fecha_deceso).toLocaleString() },
+    { header: 'Causa Muerte', accessorKey: 'causa_muerte' },
+    { header: 'Método Disposición', accessorKey: 'metodo_disposicion' },
+    {
+      header: 'Acciones',
+      id: 'acciones',
+      cell: info => <Link to={`/cerdos/${info.row.original.id_cerdo}`} style={{ color: '#2563eb', fontWeight: 600 }}>Ver</Link>
+    }
+  ], [])
+
   return (
     <div>
-      <PageHeader title="Cerdos">
-        <button style={btnPrimary} onClick={() => { setError(''); setShowModal(true); }}>+ Registrar cerdo</button>
+      <PageHeader title="Inventario de Cerdos">
+        {activeTab === 'Activo' && (
+          <button style={btnPrimary} onClick={() => { setError(''); setShowModal(true); }}>+ Registrar cerdo</button>
+        )}
       </PageHeader>
 
+      {/* Tabs */}
+      <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem' }}>
+        <button style={tabButtonStyle(activeTab === 'Activo')} onClick={() => setActiveTab('Activo')}>
+          Activos ({counters.Activo})
+        </button>
+        <button style={tabButtonStyle(activeTab === 'Vendido')} onClick={() => setActiveTab('Vendido')}>
+          Vendidos ({counters.Vendido})
+        </button>
+        <button style={tabButtonStyle(activeTab === 'Muerto')} onClick={() => setActiveTab('Muerto')}>
+          Muertos ({counters.Muerto})
+        </button>
+      </div>
+
       <div style={card}>
-        <DataTable data={cerdos} columns={columns} />
+        <DataTable 
+          data={data} 
+          columns={
+            activeTab === 'Activo' ? columnsActivos :
+            activeTab === 'Vendido' ? columnsVendidos :
+            columnsMuertos
+          } 
+        />
       </div>
 
       {showModal && (
@@ -104,7 +193,7 @@ export default function Cerdos() {
             <FormField label="Padre (opcional)">
               <select style={inputStyle} {...register('id_padre')}>
                 <option value="">Sin padre conocido</option>
-                {cerdos
+                {allCerdos
                   .filter(c => c.sexo_cerdo === 'Macho')
                   .map(c => (
                     <option key={c.id_cerdo} value={c.id_cerdo}>
@@ -118,7 +207,7 @@ export default function Cerdos() {
             <FormField label="Madre (opcional)">
               <select style={inputStyle} {...register('id_madre')}>
                 <option value="">Sin madre conocida</option>
-                {cerdos
+                {allCerdos
                   .filter(c => c.sexo_cerdo === 'Hembra')
                   .map(c => (
                     <option key={c.id_cerdo} value={c.id_cerdo}>
