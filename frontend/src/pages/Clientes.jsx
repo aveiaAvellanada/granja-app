@@ -105,22 +105,28 @@ export default function Clientes() {
       )}
 
       {showModal && (
-        <Modal title="Nuevo cliente" onClose={() => setShowModal(false)}>
+        <Modal title="Nuevo cliente" onClose={() => setShowModal(false)} maxWidth={700}>
           <form onSubmit={handleSubmit(onSubmit)}>
-            <FormField label="Primer Nombre" error={errors.p_nombre?.message}><input style={inputStyle} {...register('p_nombre', { required: true })} /></FormField>
-            <FormField label="Segundo Nombre (Opcional)"><input style={inputStyle} {...register('s_nombre')} /></FormField>
-            <FormField label="Primer Apellido" error={errors.p_apellido?.message}><input style={inputStyle} {...register('p_apellido', { required: true })} /></FormField>
-            <FormField label="Segundo Apellido (Opcional)"><input style={inputStyle} {...register('s_apellido')} /></FormField>
-            <FormField label="Cédula" error={errors.cedula_cliente?.message}><input style={inputStyle} {...register('cedula_cliente', { required: true })} /></FormField>
-            <FormField label="Teléfono (Opcional)"><input style={inputStyle} {...register('telefono')} /></FormField>
-            <FormField label="Correo (Opcional)"><input style={inputStyle} type="email" {...register('correo_cliente')} /></FormField>
-            <FormField label="Estado" error={errors.estado_cliente?.message}>
-              <select style={inputStyle} {...register('estado_cliente', { required: true })}>
-                <option value="Activo">Activo</option>
-                <option value="Inactivo">Inactivo</option>
-              </select>
-            </FormField>
-            <button type="submit" style={{ ...btnPrimary, width: '100%' }}>Crear cliente</button>
+            <div className="grid-2-col">
+              <div className="col gap-4">
+                <FormField label="Primer Nombre" error={errors.p_nombre?.message}><input style={inputStyle} {...register('p_nombre', { required: true })} /></FormField>
+                <FormField label="Segundo Nombre (Opcional)"><input style={inputStyle} {...register('s_nombre')} /></FormField>
+                <FormField label="Primer Apellido" error={errors.p_apellido?.message}><input style={inputStyle} {...register('p_apellido', { required: true })} /></FormField>
+                <FormField label="Segundo Apellido (Opcional)"><input style={inputStyle} {...register('s_apellido')} /></FormField>
+              </div>
+              <div className="col gap-4">
+                <FormField label="Cédula" error={errors.cedula_cliente?.message}><input style={inputStyle} {...register('cedula_cliente', { required: true })} /></FormField>
+                <FormField label="Teléfono (Opcional)"><input style={inputStyle} {...register('telefono')} /></FormField>
+                <FormField label="Correo (Opcional)"><input style={inputStyle} type="email" {...register('correo_cliente')} /></FormField>
+                <FormField label="Estado" error={errors.estado_cliente?.message}>
+                  <select style={inputStyle} {...register('estado_cliente', { required: true })}>
+                    <option value="Activo">Activo</option>
+                    <option value="Inactivo">Inactivo</option>
+                  </select>
+                </FormField>
+              </div>
+            </div>
+            <button type="submit" className="btn btn-primary btn-block" style={{ marginTop: '1.5rem' }}>Crear cliente</button>
           </form>
         </Modal>
       )}

@@ -46,7 +46,7 @@ const overlay = {
   zIndex: 100,
   padding: '1rem',
   alignItems: 'flex-start',
-  paddingTop: '24px',
+  paddingTop: '12px',
   overflowY: 'auto',
   animation: 'overlayIn 180ms cubic-bezier(0.22,1,0.36,1)',
 }

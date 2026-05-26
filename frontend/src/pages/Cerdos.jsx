@@ -180,77 +180,81 @@ export default function Cerdos() {
         </div>
       )}
 
-      {showModal && (
-        <Modal title="Registrar cerdo" onClose={() => setShowModal(false)}>
+        <Modal title="Registrar cerdo" onClose={() => setShowModal(false)} maxWidth={700}>
           <form onSubmit={handleSubmit(onSubmit)}>
-            <FormField label="Sexo" error={errors.sexo?.message}>
-              <select style={inputStyle} {...register('sexo', { required: 'Requerido' })}>
-                <option value="">Seleccione...</option>
-                <option value="Macho">Macho</option>
-                <option value="Hembra">Hembra</option>
-              </select>
-            </FormField>
-            
-            <FormField label="Raza" error={errors.id_raza?.message}>
-              <select style={inputStyle} {...register('id_raza', { required: 'Requerido' })}>
-                <option value="">Seleccione raza...</option>
-                {razas.map(r => (
-                  <option key={r.id_raza} value={r.id_raza}>{r.descripcion}</option>
-                ))}
-              </select>
-            </FormField>
+            <div className="grid-2-col">
+              <div className="col gap-4">
+                <FormField label="Sexo" error={errors.sexo?.message}>
+                  <select style={inputStyle} {...register('sexo', { required: 'Requerido' })}>
+                    <option value="">Seleccione...</option>
+                    <option value="Macho">Macho</option>
+                    <option value="Hembra">Hembra</option>
+                  </select>
+                </FormField>
+                
+                <FormField label="Raza" error={errors.id_raza?.message}>
+                  <select style={inputStyle} {...register('id_raza', { required: 'Requerido' })}>
+                    <option value="">Seleccione raza...</option>
+                    {razas.map(r => (
+                      <option key={r.id_raza} value={r.id_raza}>{r.descripcion}</option>
+                    ))}
+                  </select>
+                </FormField>
 
-            <FormField label="Fecha de nacimiento">
-              <input style={inputStyle} type="date" {...register('fecha_nac', { required: 'Requerido' })} />
-            </FormField>
+                <FormField label="Fecha de nacimiento">
+                  <input style={inputStyle} type="date" {...register('fecha_nac', { required: 'Requerido' })} />
+                </FormField>
+              </div>
 
-            <FormField label="Padre (opcional)">
-              <select style={inputStyle} {...register('id_padre')}>
-                <option value="">Sin padre conocido</option>
-                {allCerdos
-                  .filter(c => c.sexo_cerdo === 'Macho')
-                  .map(c => (
-                    <option key={c.id_cerdo} value={c.id_cerdo}>
-                      Cerdo #{c.id_cerdo} - {c.raza} - {c.edad_dias} días
-                    </option>
-                  ))
-                }
-              </select>
-            </FormField>
+              <div className="col gap-4">
+                <FormField label="Padre (opcional)">
+                  <select style={inputStyle} {...register('id_padre')}>
+                    <option value="">Sin padre conocido</option>
+                    {allCerdos
+                      .filter(c => c.sexo_cerdo === 'Macho')
+                      .map(c => (
+                        <option key={c.id_cerdo} value={c.id_cerdo}>
+                          Cerdo #{c.id_cerdo} - {c.raza} - {c.edad_dias} días
+                        </option>
+                      ))
+                    }
+                  </select>
+                </FormField>
 
-            <FormField label="Madre (opcional)">
-              <select style={inputStyle} {...register('id_madre')}>
-                <option value="">Sin madre conocida</option>
-                {allCerdos
-                  .filter(c => c.sexo_cerdo === 'Hembra')
-                  .map(c => (
-                    <option key={c.id_cerdo} value={c.id_cerdo}>
-                      Cerdo #{c.id_cerdo} - {c.raza} - {c.edad_dias} días
-                    </option>
-                  ))
-                }
-              </select>
-            </FormField>
+                <FormField label="Madre (opcional)">
+                  <select style={inputStyle} {...register('id_madre')}>
+                    <option value="">Sin madre conocida</option>
+                    {allCerdos
+                      .filter(c => c.sexo_cerdo === 'Hembra')
+                      .map(c => (
+                        <option key={c.id_cerdo} value={c.id_cerdo}>
+                          Cerdo #{c.id_cerdo} - {c.raza} - {c.edad_dias} días
+                        </option>
+                      ))
+                    }
+                  </select>
+                </FormField>
 
-            <FormField label="Cochinera" error={errors.id_cochinera?.message}>
-              <select style={inputStyle} {...register('id_cochinera', { required: 'Requerido' })}>
-                <option value="">Seleccione cochinera...</option>
-                {cochineras
-                  .filter(c => c.estado_cochinera !== 'En Mantenimiento' && c.espacios_libres > 0)
-                  .map(c => (
-                    <option key={c.id_cochinera} value={c.id_cochinera}>
-                      Cochinera #{c.id_cochinera} ({c.espacios_libres} espacios libres)
-                    </option>
-                  ))
-                }
-              </select>
-            </FormField>
+                <FormField label="Cochinera" error={errors.id_cochinera?.message}>
+                  <select style={inputStyle} {...register('id_cochinera', { required: 'Requerido' })}>
+                    <option value="">Seleccione cochinera...</option>
+                    {cochineras
+                      .filter(c => c.estado_cochinera !== 'En Mantenimiento' && c.espacios_libres > 0)
+                      .map(c => (
+                        <option key={c.id_cochinera} value={c.id_cochinera}>
+                          Cochinera #{c.id_cochinera} ({c.espacios_libres} espacios libres)
+                        </option>
+                      ))
+                    }
+                  </select>
+                </FormField>
+              </div>
+            </div>
 
-            {error && <p style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: '1rem' }}>{error}</p>}
-            <button type="submit" style={{ ...btnPrimary, width: '100%' }}>Registrar</button>
+            {error && <p style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '1rem', marginBottom: '1rem' }}>{error}</p>}
+            <button type="submit" className="btn btn-primary btn-block" style={{ marginTop: '1.5rem' }}>Registrar ejemplar</button>
           </form>
         </Modal>
-      )}
     </div>
   )
 }
