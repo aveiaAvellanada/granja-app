@@ -1,8 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
-import { getVentas, registrarVenta, anularFactura, getDetalleVenta } from '../api/ventas.api.js'
+import { getVentas, registrarVenta, anularFactura, getDetalleVenta, getCerdosVendibles } from '../api/ventas.api.js'
 import { buscarClientes } from '../api/clientes.api.js'
-import { getCerdos } from '../api/cerdos.api.js'
 import PageHeader from '../components/PageHeader.jsx'
 import Modal from '../components/Modal.jsx'
 import DataTable from '../components/DataTable.jsx'
@@ -74,7 +73,7 @@ export default function Ventas() {
   
   useEffect(() => {
     if (isNewSaleOpen) {
-      getCerdos().then(r => setAvailablePigs(r.data)).catch(() => {})
+      getCerdosVendibles().then(r => setAvailablePigs(r.data)).catch(() => {})
     }
   }, [isNewSaleOpen])
 

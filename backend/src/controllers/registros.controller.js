@@ -4,27 +4,18 @@ import pool from '../config/db.postgres.js'
 
 export async function getAlimentacion(req, res, next) {
   try {
-    const result = await pool.query(`
-      SELECT 
-        r.id_registro,
-        r.fecha_registro,
-        (c.id_cerdo || ' - ' || rc.descripcion || ' - ' || 
-         c.sexo_cerdo) AS cerdo,
-        c.id_cerdo,
-        (e.p_nombre || ' ' || e.p_apellido) AS empleado,
-        i.nombre_item AS alimento,
-        a.cantidad_consumida,
-        u.abreviatura AS unidad,
-        r.observaciones
-      FROM gestion.registro r
-      JOIN gestion.alimentacion a ON a.id_registro = r.id_registro
-      JOIN infraestructura.cerdo c ON c.id_cerdo = r.id_cerdo
-      JOIN infraestructura.raza_ref rc ON rc.id_raza = c.id_raza
-      JOIN personal.empleado e ON e.id_empleado = r.id_empleado
-      JOIN gestion.inventario i ON i.id_item = a.id_item
-      JOIN gestion.unidad_medida_ref u ON u.id_unidad = a.id_unidad
-      ORDER BY r.fecha_registro DESC
-    `)
+    const result = await pool.query(
+      `SELECT
+         fecha AS fecha_registro,
+         id_cerdo AS cerdo,
+         nombre_item AS alimento,
+         cantidad_consumida,
+         unidad,
+         registrado_por AS empleado,
+         NULL::text AS observaciones
+       FROM gestion.vw_consumo_alimento
+       ORDER BY fecha DESC`
+    )
     res.json(result.rows)
   } catch (err) {
     next(err)
@@ -111,6 +102,22 @@ export async function getPesajes(req, res, next) {
       JOIN personal.empleado e ON e.id_empleado = p.id_empleado
       ORDER BY p.fecha_pesaje DESC
     `)
+    res.json(result.rows)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function getConsumoAlimento(req, res, next) {
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
+    const fecha_ini = req.query.fecha_ini || firstOfMonth
+    const fecha_fin = req.query.fecha_fin || today
+    const result = await pool.query(
+      'SELECT * FROM gestion.fn_consumo_alimento_por_periodo($1, $2)',
+      [fecha_ini, fecha_fin]
+    )
     res.json(result.rows)
   } catch (err) {
     next(err)

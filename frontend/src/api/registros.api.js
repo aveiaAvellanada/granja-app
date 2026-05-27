@@ -8,3 +8,5 @@ export const registrarRevision = (data) => api.post('/registros/revision', data)
 
 export const getPesajes = () => api.get('/registros/pesajes')
 export const registrarPesaje = (data) => api.post('/registros/pesajes', data)
+
+export const getConsumoAlimento = (params) => api.get('/registros/consumo', { params })

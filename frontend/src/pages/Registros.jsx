@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { useAuth } from '../context/AuthContext'
-import { getAlimentacion, registrarAlimentacion, getRevision, registrarRevision, getPesajes, registrarPesaje } from '../api/registros.api.js'
+import { getAlimentacion, registrarAlimentacion, getRevision, registrarRevision, getPesajes, registrarPesaje, getConsumoAlimento } from '../api/registros.api.js'
 import { getCerdos } from '../api/cerdos.api.js'
 import { getInventario, getUnidades } from '../api/inventario.api.js'
 import PageHeader from '../components/PageHeader'
@@ -28,6 +28,13 @@ export default function Registros() {
   const [unidades, setUnidades] = useState([])
 
   const { register, handleSubmit, reset, setValue } = useForm()
+
+  const [consumoData, setConsumoData] = useState([])
+  const [consumoLoading, setConsumoLoading] = useState(false)
+  const [fechaIni, setFechaIni] = useState(() => {
+    const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0]
+  })
+  const [fechaFin, setFechaFin] = useState(() => new Date().toISOString().split('T')[0])
 
   useEffect(() => {
     // Handle navigation from Veterinario.jsx
@@ -82,6 +89,18 @@ export default function Registros() {
   useEffect(() => {
     loadAuxData()
   }, [])
+
+  const consultarConsumo = async () => {
+    setConsumoLoading(true)
+    try {
+      const res = await getConsumoAlimento({ fecha_ini: fechaIni, fecha_fin: fechaFin })
+      setConsumoData(res.data)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setConsumoLoading(false)
+    }
+  }
 
   const onAlimentacionSubmit = async (formData) => {
     await registrarAlimentacion(formData)
@@ -158,13 +177,45 @@ export default function Registros() {
       ) : error ? (
         <ErrorMessage message={error} onRetry={loadTabContent} />
       ) : (
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <DataTable data={data} columns={
-            activeTab === 1 ? columnsAlimentacion : 
-            activeTab === 2 ? columnsRevision : 
-            columnsPesajes
-          } />
-        </div>
+        <>
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            <DataTable data={data} columns={
+              activeTab === 1 ? columnsAlimentacion :
+              activeTab === 2 ? columnsRevision :
+              columnsPesajes
+            } />
+          </div>
+          {activeTab === 1 && (
+            <div className="card" style={{ marginTop: '1.5rem', padding: '1.25rem' }}>
+              <div className="eyebrow" style={{ marginBottom: '1rem' }}>Consumo por período</div>
+              <div className="row gap-3" style={{ alignItems: 'flex-end', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--ink-muted)', marginBottom: 4 }}>Desde</label>
+                  <input type="date" className="input" value={fechaIni} onChange={e => setFechaIni(e.target.value)} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--ink-muted)', marginBottom: 4 }}>Hasta</label>
+                  <input type="date" className="input" value={fechaFin} onChange={e => setFechaFin(e.target.value)} />
+                </div>
+                <button className="btn btn-secondary" onClick={consultarConsumo} disabled={consumoLoading}>
+                  {consumoLoading ? 'Consultando...' : 'Consultar'}
+                </button>
+              </div>
+              {consumoData.length > 0 && (
+                <DataTable
+                  data={consumoData}
+                  columns={[
+                    { header: 'Cerdo', accessorKey: 'id_cerdo' },
+                    { header: 'Alimento', accessorKey: 'nombre_item' },
+                    { header: 'Cantidad total', accessorKey: 'cantidad_total', cell: info => <span className="text-strong">{info.getValue()}</span> },
+                    { header: 'Unidad', accessorKey: 'unidad' },
+                    { header: 'N° registros', accessorKey: 'num_registros' }
+                  ]}
+                />
+              )}
+            </div>
+          )}
+        </>
       )}
 
       {/* Modal Alimentación */}

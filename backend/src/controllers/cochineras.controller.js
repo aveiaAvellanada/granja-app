@@ -46,28 +46,9 @@ export async function getCochineraCerdos(req, res, next) {
   try {
     const { id } = req.params
     const result = await pool.query(
-      `SELECT 
-        c.id_cerdo,
-        c.sexo_cerdo,
-        r.descripcion AS raza,
-        c.fecha_nacimiento,
-        (CURRENT_DATE - c.fecha_nacimiento) AS edad_dias,
-        p.peso_kg AS ultimo_peso_kg
-      FROM infraestructura.cerdo c
-      JOIN infraestructura.raza_ref r ON r.id_raza = c.id_raza
-      LEFT JOIN (
-        SELECT DISTINCT ON (id_cerdo) id_cerdo, peso_kg
-        FROM gestion.pesaje
-        ORDER BY id_cerdo, fecha_pesaje DESC
-      ) p ON p.id_cerdo = c.id_cerdo
-      WHERE c.id_cerdo IN (
-        SELECT DISTINCT ON (id_cerdo) id_cerdo
-        FROM infraestructura.historial_traslado
-        WHERE id_cochinera_destino = $1
-        ORDER BY id_cerdo, fecha_traslado DESC
-      )
-      AND c.estado_cerdo = 'Activo'
-      ORDER BY c.id_cerdo`,
+      `SELECT * FROM infraestructura.vw_cerdos_activos
+       WHERE id_cochinera_actual = $1
+       ORDER BY id_cerdo`,
       [id]
     )
     res.json(result.rows)

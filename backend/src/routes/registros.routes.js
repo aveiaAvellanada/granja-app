@@ -1,8 +1,9 @@
 import { Router } from 'express'
-import { 
+import {
   getAlimentacion, registrarAlimentacion,
   getRevision, registrarRevision,
-  getPesajes, registrarPesaje
+  getPesajes, registrarPesaje,
+  getConsumoAlimento
 } from '../controllers/registros.controller.js'
 
 const router = Router()
@@ -15,5 +16,7 @@ router.post('/revision', registrarRevision)
 
 router.get('/pesajes', getPesajes)
 router.post('/pesajes', registrarPesaje)
+
+router.get('/consumo', getConsumoAlimento)
 
 export default router

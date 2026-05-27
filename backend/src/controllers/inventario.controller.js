@@ -3,12 +3,12 @@ import pool from '../config/db.postgres.js'
 export async function getInventario(req, res, next) {
   try {
     const result = await pool.query(
-      `SELECT i.*, t.descripcion AS tipo_descripcion,
-              u.nombre AS unidad_nombre, u.abreviatura
-       FROM gestion.inventario i
-       JOIN gestion.tipo_item_ref t ON t.id_tipo_item = i.id_tipo_item
-       JOIN gestion.unidad_medida_ref u ON u.id_unidad = i.id_unidad_base
-       ORDER BY i.id_tipo_item, i.nombre_item`
+      `SELECT v.id_item, v.nombre_item, v.tipo_item AS tipo_descripcion,
+              v.cantidad_stock, v.unidad, v.abreviatura, v.estado_item,
+              i.id_tipo_item
+       FROM gestion.vw_inventario_disponible v
+       JOIN gestion.inventario i ON i.id_item = v.id_item
+       ORDER BY i.id_tipo_item, v.nombre_item`
     )
     res.json(result.rows)
   } catch (err) {

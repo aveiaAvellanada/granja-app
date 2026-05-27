@@ -74,6 +74,28 @@ export async function getDashboardVentas(req, res, next) {
   }
 }
 
+export async function getCerdosVendibles(req, res, next) {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM comercial.vw_cerdos_vendibles ORDER BY id_cerdo'
+    )
+    res.json(result.rows)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function getVentasPorCliente(req, res, next) {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM comercial.vw_ventas_por_cliente ORDER BY total_compras DESC'
+    )
+    res.json(result.rows)
+  } catch (err) {
+    next(err)
+  }
+}
+
 export async function getDetalleVenta(req, res, next) {
   try {
     const { id } = req.params
