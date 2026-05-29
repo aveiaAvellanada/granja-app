@@ -16,7 +16,12 @@ async function syncEventos() {
 
     if (eventos.length === 0) return
 
-    await db.collection('auditoria_eventos').insertMany(eventos)
+    const eventosParaMongo = eventos.map(e => ({
+      ...e,
+      sincronizado: true
+    }))
+
+    await db.collection('auditoria_eventos').insertMany(eventosParaMongo)
 
     const ids = eventos.map((e) => e.id_evento)
     await pool.query(
