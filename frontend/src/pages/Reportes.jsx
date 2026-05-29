@@ -81,7 +81,7 @@ export default function Reportes() {
   const columnsAuditoria = useMemo(() => [
     { header: 'Fecha y Hora', accessorFn: row => new Date(row.fecha_hora).toLocaleString(), cell: info => <span className="text-muted">{info.getValue()}</span> },
     { header: 'Entidad', accessorKey: 'tabla_origen', cell: info => <span className="badge badge-mono">{info.getValue()}</span> },
-    { header: 'ID Registro', accessorKey: 'id_registro', cell: info => <span className="text-mono">#{info.getValue()}</span> },
+    { header: 'ID Registro', accessorFn: row => row.id_registro_origen || row.id_registro, cell: info => <span className="text-mono">#{info.getValue()}</span> },
     { 
       header: 'Operación', 
       accessorKey: 'accion',
@@ -94,7 +94,16 @@ export default function Reportes() {
       }
     },
     { header: 'Actor BD', accessorKey: 'usuario_bd', cell: info => <span className="text-strong" style={{ fontSize: '0.85rem' }}>{info.getValue()}</span> },
-    { header: 'Sinc', accessorKey: 'sincronizado', cell: info => info.getValue() ? <Icon name="shield" size={14} color="var(--green-accent)" /> : <Icon name="alert" size={14} color="var(--amber)" /> },
+    { 
+      header: 'Sinc', 
+      accessorKey: 'sincronizado', 
+      cell: info => {
+        const val = info.getValue()
+        if (val === true || val === 'true') return <span>✅</span>
+        if (val === false || val === 'false') return <span>⏳</span>
+        return <Icon name="alert" size={14} color="var(--amber)" />
+      }
+    },
     { 
       header: 'Datos', 
       id: 'datos',
